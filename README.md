@@ -98,9 +98,9 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
   the German broadcaster PAI apps are **plain user apps** (fully
   uninstallable). An OTA can re-assert the PAI list. See
   [docs/android.md](docs/android.md).
-- The **Play Store** is present and enabled (Leanback launcher activity →
-  visible tile in the UI6 app list, launchable via
-  `am start -n com.android.vending/com.google.android.finsky.tvmainactivity.TvMainActivity`).
+- The **Play Store** is present and enabled, but **not shown in the UI6 app
+  list** (no Google account on the unit; likely account-gated) – launchable
+  via `am start -n com.android.vending/com.google.android.finsky.tvmainactivity.TvMainActivity`.
   The ADB shell holds `INSTALL_PACKAGES`, so APKs can be sideloaded with
   `pm install` (32-bit `armeabi-v7a` only). Full pre-installed app catalog
   (25 apps) in [docs/android.md](docs/android.md).
