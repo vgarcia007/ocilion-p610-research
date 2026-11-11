@@ -1,0 +1,30 @@
+# Build artifacts
+*.apk
+*.aab
+*.img
+*.img.gz
+*.tar
+*.tar.gz
+*.zip
+*.sha256
+
+# ADB / device captures (may contain device-specific identifiers)
+adb-info-*.txt
+baseline_packages.txt
+captures/
+device-dumps/
+*.log
+
+# Secrets / credentials (never commit)
+*.pem
+*.key
+credentials*
+config.json
+.env
+
+# Editor / OS noise
+.DS_Store
+*.swp
+*~
+.vscode/
+.idea/

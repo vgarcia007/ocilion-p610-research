@@ -1,0 +1,142 @@
+# Firmware & Software
+
+Everything below was read from the running device via ADB on 2026-11-11.
+
+## Build identification
+
+```
+ro.build.fingerprint   = Ocilion-WL/HP4C06-Ocilion/HP4CD-Ocilion:14/UKG3.250826.001/C4.0.7_20260605:user/release-keys
+ro.build.description   = HP4CAX5M_4K-user 14 UKG3.250826.001 C4.0.7_20260605 release-keys
+ro.build.type          = user
+ro.build.tags          = release-keys
+ro.build.host          = sky17188        (Skyworth build host)
+ro.build.version.incremental = C4.0.7_20260605
+ro.build.version.security_patch = 2026-04-05
+```
+
+- Android **14**, API level 34.
+- `user`/`release-keys` build → production image, no `test-keys`, no
+  test-type build features. ADB is available only because the operator
+  enabled it (developer mode), not because of build type.
+- `ro.boot.build.id = UKG3.250826.001` is a Google platform build ID
+  (UKG3 = Android 14 U-base release line), so the base is close to the
+  August 2025 AOSP TV release.
+- Reference fingerprint: `Amlogic/ross/ross:14/UKG3.250826.001/13993950:user/release-keys`
+  – i.e. the firmware is a Skyworth build of an **Amlogic `ross` reference
+  AOSP tree**, with a Google TV "product" partition stacked on top.
+
+## Kernel
+
+```
+Linux version 5.15.196-android14-11-g3d26c188ef7e-ab14657224
+  (Android clang 17.0.2, +pgo +bolt +lto)
+  SMP PREEMPT, built Sat Jan 3 21:52:40 UTC 2026
+```
+
+- Mainline-derived **5.15** LTS base with Android patches, same family CoreELEC
+  uses for this SoC generation (CoreELEC 22 kernel = 5.15.196).
+- `ro.boot.boot_devices = soc/fe08c000.mmc` – the eMMC is the boot/storage
+  device.
+- Kernel exposes the SoC as 64-bit ARMv8; the userspace is deliberately 32-bit
+  (see [hardware.md](hardware.md) → CPU).
+
+## Boot, A/B, Verified Boot
+
+| Property | Value | Meaning |
+|----------|-------|---------|
+| `ro.boot.verifiedbootstate` | **green** | fully verified boot chain |
+| `ro.boot.flash.locked` | **1** | **bootloader is locked** |
+| `ro.boot.vbmeta.device_state` | locked | AVB state locked |
+| `ro.boot.veritymode` | enforcing (+ `managed=yes`) | dm-verity active on all partitions |
+| `ro.boot.selinux` | enforcing | SELinux enforcing |
+| `ro.boot.slot_suffix` | `_a` | A/B slots; currently on slot A |
+| `ro.boot.avb_version` | 1.2 | AVB 1.2 |
+| `ro.boot.rollback` | 0 | rollback protection level |
+| `ro.boot.rpmb_state` | 1x1 | RPMB binding (rollback security) |
+| `odsign.verification.*` | success | **ODM signing verification** (Skyworth "odsign" root-digest check per partition, sha256) |
+| `ro.secure` | 1 | secure mode (no unsigned shells) |
+
+All major partitions (`system`, `product`, `system_ext`, `vendor`, `vendor_dlkm`,
+`odm`, `odm_dlkm`) carry a `partition.<name>.verified` flag with a SHA-256
+root digest – the SoC boot ROM verifies them in hardware before handing off to
+Android. This means:
+
+- **No custom kernels, no Magisk-style patching, no system modifications** are
+  possible without either an unlocked bootloader (not available here – the
+  boot flash is locked and `sys.oem_unlock_allowed=1` is only a *capability*
+  flag, not a working unlock) or the proprietary Amlogic burning path.
+- A/B slots + `env` partition = standard Android A/B update flow.
+
+### Bootloader
+
+- `ro.bootloader = 01.01.260605.182929` (Amlogic U-Boot style build string,
+  June 2026).
+- Amlogic boxes of this generation normally boot: `XBL → U-Boot (bl1/bl2) →
+  env/misc → Android boot_a`. The **`env`** (GPT/params) and **`misc`**
+  partitions are the Amlogic-specific boot control surface (this is also what
+  the `coreelec-android-dualboot-twilight` project manipulates on other
+  Amlogic boxes).
+
+## Security model summary
+
+- Verified boot green + locked + dm-verity + SELinux + user build = a
+  **hardened operator appliance**, not a developer device.
+- ADB: `ro.adb.secure=1`, connected as `shell` (uid 2000), **no `su`** binary,
+  no root. `ro.oem_unlock_allowed` exists but unlocking requires an
+  Amlogic/Skyworth-specific flow that is not exposed in this firmware.
+- DRM: Widevine APEX present (`/apex/com.google.android.widevine`),
+  `init.svc.drm` + `mediadrm` running, TEE + `tee_comm_hdcp` nodes present,
+  protected buffers enabled → **Widevine L1** (see open question in
+  [android.md](android.md)).
+
+## Update mechanism
+
+- **Standard Android A/B OTA via `update_engine`** (`init.svc.update_engine =
+  running`), with `ro.build.ab_update=true`. The boot-reason history shows
+  real OTAs: `reboot,ota,...` entries.
+- OTAs are delivered by the **operator** (Ocilion provisioning) and, on a
+  provisioned device, through their backend. Because the box is provisioned,
+  firmware updates arrive via the operator pipeline, not directly from Google.
+- GMS updates: the `gms` partition is part of the OTA (`gmsversion =
+  S_amlogic`), i.e. Google's SafetyNet-style "GMS system update" is folded
+  into the OEM image; the box is not a direct "Google system updater" device.
+- There is no user-visible "check for updates" outside the operator flow;
+  Settings shows operator-controlled update UI.
+
+## Running init services (47 at boot)
+
+Notable services (full list obtainable via `scripts/adb-info.sh`):
+
+- Standard Android: `zygote`, `surfaceflinger`, `audioserver`, `media*`,
+  `vold`, `netd`, `installd`, `keystore2`, `gatekeeperd`, `statsd`, `storaged`,
+  `update_engine`, `logd`/`logpersist`, `tombstoned`, `traced`, `cameraserver`
+  (no camera hardware, but service runs), `credstore`, `prng_seeder`, `incidentd`.
+- Amlogic vendor: `gpu`, `dhp_daemon` (Amlogic DHP = display/HDMI pipeline),
+  `magic_wake_daemon`, `mdnsd` (Chromecast/mDNS discovery for casting),
+  `droidaudio` (Skyworth audio daemon), `boardinfo`, `system_control`,
+  `system_suspend`, `hidl_memory`, `android-hardware-media-c2-hal-1-2`.
+- `bi_client` – Biometric/Id client (part of the Google partner setup stack).
+
+`mdnsd` being present is what enables **Chromecast-style casting** discovery
+on the box.
+
+## Device Tree
+
+`/proc/device-tree` is partially restricted for the shell user (SELinux), but
+the SoC node listing confirms the platform: `amhdmitx` (HDMI TX),
+`aml_wifi` (integrated Wi-Fi/BT), `amvenc_avc` (hardware video encoder),
+`aml_bt`, `aucpu` (audio SoC), `amlogic-dt-id`, and 2 VPU nodes
+(`amlvideo2_0/1`) consistent with an S905X5-class media pipeline.
+The full DTB itself is not readable from the shell (normal for secure
+bootloader images).
+
+## Open questions & planned experiments
+
+- **Exact Widevine level**: L1 is strongly implied (TEE + protected buffers +
+  L1 APEX), but confirming it requires a DRM probe app (e.g. the Widevine
+  License Checker / a Netflix 4K test), which needs installation approval.
+- **HDMI 2.1 / eARC / 4K60+DV output**: verify with an HDMI 2.1 sink and a
+  DV 4K60 stream (e.g. a known DV profile-5 file on local storage).
+- **Ethernet link speed**: confirm 100 Mbit with a connected link.
+- **OTA content**: whether operator OTAs carry Google mainline module updates
+  (APEX) or only full images – observe over time.
