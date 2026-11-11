@@ -13,6 +13,13 @@
 - P610 EU declaration of conformity:
   <https://ocilion.com/assets/files/P610_DoC_20260402.pdf>
 
+## Operators
+
+- Known P610 operators (komro, Deutsche GigaNetz, Kabelfernsehen Bödeli,
+  Telenec, Gemeindewerke Nümbrecht, + Ocilion customer list) – maintained in
+  [operators.md](operators.md).
+- Ocilion references & case studies: <https://ocilion.com/referenzen-case-studies>
+
 ## Community / third-party
 
 - Android TV Guide – Ocilion P610 entry (Skyworth HP4C06/HP4CD, S905X5M,

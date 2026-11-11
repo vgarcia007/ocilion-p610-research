@@ -25,7 +25,8 @@ most operator boxes.
 > based on the same Skyworth/Ocilion hardware and firmware family, but may
 > ship different pre-installed app sets, language defaults, and provisioning
 > backends. Hardware, boot/security, and debranding conclusions in this repo
-> are not market-dependent; the app-policy findings are.
+> are not market-dependent; the app-policy findings are. Known operators
+> using the P610 are tracked in [docs/operators.md](docs/operators.md).
 
 ## Key specifications (verified via ADB where noted)
 
@@ -120,6 +121,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/debranding.md](docs/debranding.md) | Launcher analysis, what's missing/extra vs. stock, reversible debranding plan, test plan |
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
+| [docs/operators.md](docs/operators.md) | Known operators/providers deploying the P610 (evidence-graded) |
 | [docs/links.md](docs/links.md) | Official sources, datasheets, and related projects |
 
 ## Tooling
