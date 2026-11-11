@@ -116,6 +116,78 @@ Practical consequences:
   64-bit. A rebuilt 64-bit image would likely run arm64 userspace, but that
   requires an unlocked/rebuilt firmware (out of scope, see linux.md).
 
+## Forced / pre-installed apps ("PAI") and their removability
+
+The operator enforces a set of apps (per the PAI/FTI docs: Netflix, Prime
+Video, Disney+ are "fix vorhanden und nicht deinstallierbar"). On device
+this shows up as **two distinct classes**, which behave very differently:
+
+### Class 1 – System apps (cannot be uninstalled, only disabled)
+
+These exist as **base APKs in signed system partitions** (A/B `super`),
+updated at `/data` via the normal Play Store / operator update channel
+(`flags = SYSTEM + UPDATED_SYSTEM_APP`):
+
+| App | Base APK (read-only partition) | Note |
+|-----|-------------------------------|------|
+| Netflix (`com.netflix.ninja`) | `/product/app/Netflix/Netflix.apk` (~93 MB) | plus a dedicated system service `com.netflix.tokenmanager` (`/system_ext/app/NfxTokenManager`) – Netflix is deeply integrated (token/session offload) |
+| Disney+ (`com.disney.disneyplus`) | `/system/priv-app/Disney/Disney.apk` (~39 MB) | **priv-app** → holds elevated privileges |
+| Prime Video (`com.amazon.amazonvideo.livingroom`) | `/system/app/PrimeVideo/PrimeVideo.apk` (~25 MB) | |
+| Play Store (`com.android.vending`) | SYSTEM app | the operator's chosen app channel |
+| UI6 launcher (`com.ocilion.p6`) | SYSTEM app in /data | see [debranding.md](debranding.md) |
+
+Consequences:
+
+- The GUI (and `pm uninstall`) **cannot remove** them – Android forbids
+  uninstalling `SYSTEM` apps. "Deaktivieren" (disable for user 0) is the
+  maximum the UI offers.
+- **Without root, `pm uninstall` fails** ("not a user app"). The standard
+  no-root equivalent is a *per-user* uninstall, which **does** work for
+  system apps:
+  ```sh
+  # remove for the current user (reversible!)
+  adb shell pm uninstall -k --user 0 com.netflix.ninja
+  # restore at any time
+  adb shell pm install-existing com.netflix.ninja
+  ```
+  This removes the app for user 0 (incl. data), leaving the read-only base
+  APK in place. Functionally equivalent to "disable" but cleaner.
+- **Reinstallation pressure:** the PAI mechanism
+  (`android.autoinstalls.config.Ocilion.hp4c06` auto-install config +
+  `com.ocilion.ociserviceapplication`) can re-assert the app list after
+  first-time setup or **operator OTA updates** – expect removed/disabled
+  PAI apps to come back after an OTA. This has not been triggered in this
+  research (read-only so far), it is documented from the PAI design.
+
+### Class 2 – PAI user apps (fully uninstallable)
+
+The German broadcaster apps installed during the FTI are **plain user apps**
+(no `SYSTEM` flag), installed through the Play Store
+(`installerPackageName = com.android.vending`):
+
+`de.zdf.mediathek.tivi`, `com.zdf.android.mediathek`, `de.swr.avp.ard.tv`,
+`com.mediathek_3sat.android`, `de.tagesschau`, `de.rtli.tvnow`,
+`tv.arte.plus7`, `de.toggo`, `de.heute.mobile`,
+`de.prosiebensat1digital.seventv`
+
+These can be **fully uninstalled** without root:
+```sh
+adb shell pm uninstall de.tagesschau        # complete removal
+# reinstall later via Play Store / `pm install-existing` does NOT work
+# for these (no system base) – just reinstall from Play
+```
+Note: the same PAI re-assertion pressure applies after OTAs (the FTI app
+list is operator-managed and dynamic, per the official PAI documentation).
+
+### Why the distinction exists
+
+Class 1 is the **licensing/qualification** layer: Netflix, Prime Video and
+Disney+ are "vorzertifizierte Apps" that the operator must guarantee are
+present (and Netflix's token manager suggests a device-level DRM/session
+offload for certification). Class 2 is the **FTI convenience** layer (public
+PAI list, reinstallable from the Play Store), which the PAI doc itself
+describes as an adjustable, operator-managed list.
+
 ## Services of note
 
 - `mdnsd` – Chromecast/Chromecast-to-TV discovery (Google Cast receiver is
@@ -138,3 +210,9 @@ Practical consequences:
   without bricking the boot? (Requires explicit approval; risk: boot-loop if
   init depends on it – it holds system-fixed permissions, so likely
   boot-critical.)
+- **PAI re-assertion:** does an operator OTA actually reinstall Class-1 /
+  Class-2 apps that were per-user-uninstalled or disabled? Observe across an
+  OTA. (Requires explicit approval to trigger/observe.)
+- What exactly does `com.netflix.tokenmanager` (NfxTokenManager) offload –
+  is it a device-level DRM/session credential store for Netflix
+  certification? (Static APK inspection, read-only.)

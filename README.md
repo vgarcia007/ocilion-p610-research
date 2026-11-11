@@ -80,6 +80,12 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
   **UI6** app (`com.ocilion.p6`, a Flutter app) is the launcher.
 - Security is **fully locked**: verified boot green, boot flash locked, dm-verity
   enforcing, SELinux enforcing, no root. ADB is available at `shell` level only.
+- The operator enforces a **two-class app policy**: Netflix/Prime Video/
+  Disney+/Play Store/UI6 are **system apps** (not uninstallable, but
+  removable per user via `pm uninstall -k --user 0` without root), while
+  the German broadcaster PAI apps are **plain user apps** (fully
+  uninstallable). An OTA can re-assert the PAI list. See
+  [docs/android.md](docs/android.md).
 - **Debranding looks very promising** for the "use it as a normal TV box" goal:
   the launcher is a regular user-level app in `/data`, Google TV pieces are all
   present, and the standard, *reversible* `pm disable-user` path applies. No

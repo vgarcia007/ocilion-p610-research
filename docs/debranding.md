@@ -154,6 +154,18 @@ adb shell pm enable com.ocilion.p6
 - Sign in to the Google account in the Play Store → normal app ecosystem.
 - Disable UI6's data so it doesn't pollute storage (reversible):
   `adb shell pm clear com.ocilion.p6` (it will re-initialize if re-enabled).
+- Remove forced PAI apps you don't want (see
+  [android.md → Forced / pre-installed apps](android.md#forced--pre-installed-apps-pai-and-their-removability)
+  for the two classes):
+  ```sh
+  # Class 2 (broadcaster apps): full uninstall
+  adb shell pm uninstall de.tagesschau
+  # Class 1 (Netflix/Disney+/Prime/Play Store/UI6): per-user removal, no root
+  adb shell pm uninstall -k --user 0 com.disney.disneyplus
+  # restore any of them later:
+  adb shell pm install-existing com.disney.disneyplus
+  ```
+  Expect operator OTAs to potentially re-assert the PAI list.
 - Leave `com.sdt.ocilion.oemservice` and all system-resident operator apps
   **untouched** (boot-critical, no benefit to disabling).
 - Do **not** attempt to uninstall system overlay packages.
