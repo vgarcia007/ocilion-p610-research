@@ -143,6 +143,24 @@ the `settings` value is stored in `/data`.)
 > the vendor standby daemon then only has a very long idle window to work
 > with.
 
+## Wake / "WOL" capability
+
+"Can the box be woken remotely?" – the answer depends on what "WOL" means:
+
+| Wake path | Supported? | Evidence |
+|-----------|-----------|----------|
+| **CEC / HDMI-ARC wake (TV "system standby" / routing control)** | ✅ yes | `ro.hdmi.cec.source.playback_device_action_on_routing_control = wake_up_and_send_active_source` – when the TV sends a CEC routing-control request (e.g. source switch or TV wake), the box **wakes up and announces itself as active source**. CEC is the practical "WOL" for this class of device: it keeps a low-power state with the CEC line alive (HDMI HPD/CEC pins, SoC `dhp` block). |
+| **CEC "send standby on sleep"** | ✅ yes | `ro.hdmi.cec.source.send_standby_on_sleep = broadcast` – the box tells the TV to go to standby too when it sleeps (coordinated standby). |
+| **Network WOL / magic packet on Ethernet** | ❌ no (not detectable) | `eth0` (Amlogic internal MAC) has **no `wake_on_lan` sysfs attribute**, and no `ethtool` wake flags are exposed. A 100 Mbit internal MAC without a WoL sysfs interface does not implement classic magic-packet wake. |
+| **WoWLAN (wake via Wi-Fi packet)** | ⚠️ unverified / likely not exposed | Wi-Fi is a **Realtek RTL8852BS** (SDIO) chip (`/sys/class/net/wlan0/device/driver → rtl8852bs`). The driver parameters directory is empty/not readable from the shell, and in deep standby the box drops Wi-Fi (which is why ADB-over-Wi-Fi disconnects) – there is no user-visible WoWLAN toggle. |
+| **IR / remote wake** | ✅ yes (expected) | Standard for the platform: the CEC/IR receiver path plus the running `magic_wake_daemon` (binary is SELinux-protected, not analyzable from the shell) indicate wake-on-remote support. The R601 remote can wake the box. |
+| **BT wake** | ⚠️ unverified | `magic_wake_daemon` may include BT HID wake, but not confirmable without the binary. |
+
+**Practical conclusion:** to wake the P610 remotely, use **CEC** (from the
+TV's HDMI-CEC menu / source selection, or an HDMI-CEC USB adapter + a
+controller like `cEC-client`), or the **IR/remote path**. There is no
+Ethernet magic-packet WOL and no exposed WoWLAN setting.
+
 ## Running init services (47 at boot)
 
 Notable services (full list obtainable via `scripts/adb-info.sh`):

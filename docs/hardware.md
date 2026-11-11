@@ -110,7 +110,8 @@ service).
 
 ### Wi-Fi
 
-- Wi-Fi 6 *(datasheet)*. On device: connected on **5 GHz**,
+- Wi-Fi 6 *(datasheet)*. On device: **Realtek RTL8852BS** (SDIO)
+  (`/sys/class/net/wlan0/device/driver → rtl8852bs`), connected on **5 GHz**,
   "Wi-Fi standard: 5", **866 Mbps** PHY (5 GHz, 2×2-class),
   MLO-aware supplicant code present *(verified via `dumpsys wifi`)*.
 - `wlan0` interface; `p2p0` (Wi-Fi Direct) and `ap0` (soft AP) present.
@@ -120,6 +121,8 @@ service).
 - `eth0` present, Amlogic internal MAC at `fe368000.ethernet` *(verified)*.
 - Datasheet: **100 Mbit/s** (no GbE PHY on this board). *(link speed not
   measurable – port idle during testing)*
+- No wake-on-LAN interface (`wake_on_lan` sysfs absent) – see
+  [firmware.md](firmware.md) → Wake / "WOL" capability.
 
 ### Bluetooth
 
