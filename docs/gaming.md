@@ -192,10 +192,15 @@ second Xbox, a7:e2) is harmless – it simply stays in the bonded
 list and reconnects when switched on. USB tether remains the
 zero-setup path.
 
-A vendor-ready bug report (environment, repro steps, log evidence,
-**confirmed root cause**, requested actions) is at
-[bug-reports/bt-hid-gatt-discovery.md](bug-reports/bt-hid-gatt-discovery.md)
-– ready for escalation to Ocilion / Skyworth.
+Escalation documents (in `bug-reports/`):
+- [bt-hid-gatt-discovery.md](bug-reports/bt-hid-gatt-discovery.md) –
+  vendor-ready report (environment, repro steps, log evidence,
+  confirmed root cause, requested actions).
+- [bt-hid-gatt-discovery-workaround.md](bug-reports/bt-hid-gatt-discovery-workaround.md)
+  – the verified workaround as a standalone how-to (pair with the
+  remote off; repeatable, multi-gamepad, reboot-proof).
+- [ticket-ocilion.md](bug-reports/ticket-ocilion.md) – ready-to-send
+  German support-ticket text for Ocilion.
 
 ### The reliable alternatives (in order of preference)
 

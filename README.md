@@ -114,8 +114,12 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
   bootloader** and the **absence of an SD card slot** – see
   [docs/linux.md](docs/linux.md) for the full assessment.
 - **Gaming** is solid for retro/up to mid-gen console emulation and game
-  streaming; native Steam-on-ARM is not realistic on a 32-bit userspace. See
-  [docs/gaming.md](docs/gaming.md).
+  streaming; native Steam-on-ARM is not realistic on a 32-bit userspace.
+  The BT-gamepad pairing bug (GATT discovery fails while the bundled
+  remote is connected) is **root-caused and has a verified workaround**
+  (pair with the remote off). See
+  [docs/gaming.md](docs/gaming.md) and
+  [docs/bug-reports/](docs/bug-reports/).
 
 ## Documentation
 
@@ -128,6 +132,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/debranding.md](docs/debranding.md) | Launcher analysis, what's missing/extra vs. stock, reversible debranding plan, test plan |
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
+| [docs/bug-reports/](docs/bug-reports/) | BT gamepad GATT bug: root cause, verified workaround, vendor report, ready-to-send ticket |
 | [docs/operators.md](docs/operators.md) | Known operators/providers deploying the P610 (evidence-graded) |
 | [docs/rooting.md](docs/rooting.md) | Rooting: current state, realistic paths, watch list |
 | [docs/links.md](docs/links.md) | Official sources, datasheets, and related projects |

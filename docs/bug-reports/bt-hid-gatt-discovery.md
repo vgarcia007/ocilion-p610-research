@@ -140,6 +140,9 @@ limit is hit.
     the initial pairing needs the remote powered off.
   - (c) USB tether / 2.4 GHz dongle – works, but needs extra cables.
 
+  Full step-by-step: [bt-hid-gatt-discovery-workaround.md](bt-hid-gatt-discovery-workaround.md).
+  Ready-to-send support-ticket text: [ticket-ocilion.md](ticket-ocilion.md).
+
 ## 7. Requested vendor action
 
 1. Check the BT controller firmware / `cqhci` configuration:
