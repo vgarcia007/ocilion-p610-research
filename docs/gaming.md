@@ -40,10 +40,92 @@ Expected performance on 4×Cortex-A55 @2.5 GHz (32-bit):
 The 32-bit ABI is the *binding* constraint for the heavier cores, more than
 raw CPU count. A 64-bit firmware would help, but that's out of scope.
 
-**Controller support:** the BT HID host is present (verified) and the R601
-remote works as a BT device; any standard BT/USB gamepad (XInput/DualShock/
-3rd-party) should pair and be recognized by RetroArch/Lemuroid. Gamepad
-input works via Android's standard `Input` system.
+**Controller support:** the BT HID host profile is enabled and the R601
+remote works as a BT device – **but the full HID gamepad path is broken on
+this firmware** (Xbox Wireless Controller tested, pairing succeeds but the
+HID profile connection fails in ~6 ms; see the dedicated section below).
+Gamepad input works via Android's standard `Input` system; the reliable
+path on this box is **USB** (wired or 2.4 GHz dongle).
+
+## Gamepad / controller input (important for streaming & emulation)
+
+### Bluetooth HID: broken for gamepads on this firmware (tested 2026-11-11)
+
+**Test:** Xbox Wireless Controller (modern, BLE-capable) paired against the
+box through the Settings UI (*Einstellungen → Systemeinstellungen →
+Bluetooth → Zubehör hinzufügen*).
+
+**What works:**
+
+- Bluetooth adapter is on at boot (`state: ON`, adapter name "TV Box",
+  brought up by `com.sdt.rcupair` right after boot – that's the R601 remote).
+- The **HID Host profile is enabled**: `bluetooth.profile.hid.host.enabled = true`.
+- The device is discoverable and the pairing *bond* succeeds – the
+  controller was found in the scan, `SMP Pairing success` in 2 s,
+  `bond_state_changed → BOND_STATE_BONDED`.
+
+**What fails:** the HID *profile* connection, which is what actually makes
+the gamepad usable:
+
+```
+17:41:05.409  HID_HOST connection policy → 100         # box: "connect"
+17:41:05.413  Connection state: 0 -> 1                 # starts
+17:41:05.419  Connection state: 1 -> 0                 # drops ~6 ms later
+17:41:05.449  "Failed to connect HID device"           # x3 in logcat
+```
+
+The box then **terminates the ACL itself** (`CONNECTION_TERMINATED_BY_LOCAL_HOST`)
+and **deletes the bond ~70 s later** (`Remove bond`,
+`HID_HOST connection policy → -1`), which is why the GUI finally reports
+"Kopplung nicht möglich" (pairing not possible).
+
+**Interpretation:** the platform BT stack (Realtek, SDIO, shared with the
+RTL8852BS Wi-Fi chip) implements only the *simple* HID/keyboard profile
+enough for the R601 remote (which shows up as "Ocilion BLE Keyboard"), but
+the **full HID Report-Descriptor path used by gamepads fails immediately**.
+This is a known pattern on cheap Android TV boxes: the R601/keyboard works,
+gamepads don't. The failure is on the box side, not the controller.
+
+**Practical conclusion: do not rely on Bluetooth for a gamepad on this box.**
+
+### The reliable alternatives (in order of preference)
+
+1. **USB wired** – the box has **4 USB controllers** in the kernel
+   (`usb1`–`usb4`, `sys.usb.configfs` mode).
+   - **Xbox One (2013 original):** has a **USB 2.0 Micro-B port** on the
+     controller – plug in directly, no pairing, recognized as a standard
+     HID gamepad.
+   - **Xbox One S / One X / Series:** Bluetooth only, **but** with a
+     Micro-USB / USB-C **tether cable** straight to the box they behave
+     like USB controllers (the data pins are present on the controller
+     port). This is the cleanest path for a modern Xbox pad.
+   - **PS4 / PS5:** USB-C wired.
+   - USB HID on Android boxes is very reliable because it uses a
+     completely different (and mature) stack path than BT HID.
+2. **2.4 GHz USB dongle gamepad** (e.g. 8BitDo, eSwitcher, generic) –
+   plug the dongle into USB, pair the pad to the dongle (not to the box).
+   Cheapest and most robust option.
+3. **USB Bluetooth adapter (5.x with HID/gamepad support)** – the box may
+   pick it up as a second BT adapter if the Bluetooth USB-HCI driver is
+   present; not guaranteed on this image, but common on Amlogic boxes.
+   Worth trying if BT specifically is wanted.
+4. **Different BT gamepad** – a PS4/PS5/8BitDo pad has a different HID
+   report structure and *might* succeed where the Xbox pad fails, but this
+   is unverified and the Xbox result suggests the stack limitation is
+   general, not Xbox-specific. Treat as long-shot.
+
+**For Steam Link / Moonlight:** pair the gamepad to the **box** (via USB
+or dongle, not to the PC) – the streaming traffic is Wi-Fi/Ethernet, the
+input is USB/BT; the two run on separate radios and simultaneously.
+
+### Verifying a connected gamepad
+
+```sh
+# bonded BT devices (should show the pad when paired)
+adb shell dumpsys bluetooth_manager | grep -A5 "Bonded devices:"
+# input devices (a gamepad shows up as a new eventN with its name)
+adb shell getevent -i | grep -A2 "name:"
+```
 
 ## Game streaming (the best "modern gaming" path)
 
@@ -53,8 +135,10 @@ The box is a strong **client** for streaming your own PC/console's output:
   excellent latency over a wired or Wi-Fi 6 link. The box's HEVC/AV1 decode
   + 4K HDMI 2.1 output make it a good Moonlight *display* for a
   high-bitrate 4K60 HEVC stream from a PC running Sunshine.
-- **Steam Link** (official) – Android TV app, works as a Steam streaming
-  client.
+- **Steam Link** (official) – Android TV app; **installed on this unit
+  (2026-11-11, `com.valvesoftware.steamlink`)** and installs cleanly. It
+  needs a gamepad – see the controller section above (use USB/dongle,
+  not Bluetooth).
 - **GeForce Now / Xbox Cloud / PlayStation Plus cloud** – cloud gaming
   clients; Google Play has GeForce Now for Android TV. These depend on the
   Play Store being signed in (see [debranding.md](debranding.md)).
@@ -94,10 +178,17 @@ Documented so the limitation is explicit.
 
 ## Open questions & planned experiments
 
-- Pair a standard BT gamepad and benchmark Lemuroid across PS1/N64/NDS cores
+- **USB gamepad test (next):** plug the Xbox Wireless Controller in via
+  Micro-USB/USB-C tether (or a USB 2.4 GHz dongle) and verify it appears
+  in `getevent -i` and is accepted by Steam Link / Lemuroid. If it works,
+  close the BT-HID gap with a documented working path.
+- **Second BT gamepad (long-shot):** try a PS4/PS5 or 8BitDo pad via
+  Bluetooth to check whether the HID profile failure is Xbox-specific or
+  general (the log evidence points to general).
+- Benchmark Lemuroid across PS1/N64/NDS cores with a working gamepad
   (install approval needed).
-- Moonlight client latency/quality over Wi-Fi 6 vs. Ethernet for a 4K60 HEVC
-  stream (needs a Sunshine host).
+- Moonlight client latency/quality over Wi-Fi 6 vs. Ethernet for a 4K60
+  HEVC stream (needs a Sunshine host).
 - Confirm whether any `arm64-v8a`-only games that would otherwise be
   desirable actually fail on this 32-bit build (to document the real-world
   impact of the ABI choice).
