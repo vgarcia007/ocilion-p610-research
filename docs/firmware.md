@@ -117,31 +117,44 @@ Controls observed on the device (2026-11-11):
 
 | Setting | Default on this device | Effect |
 |---------|------------------------|--------|
-| `settings secure sleep_timeout` | `10800000` (3 h) | Idle timer before the box goes to standby; exposed in the operator Settings UI (System → standby/power section) |
-| `persist.sys.standby.mode` | `1` | Amlogic standby mode, enforced by the vendor daemons (`systemcontrol` / `system_suspend` / `magic_wake_daemon`) |
+| `settings secure sleep_timeout` | `10800000` (3 h); `-1` = off | Idle timer before the box goes to standby. UI path: **Einstellungen → Systemeinstellungen → Geräteeinstellungen → "Timer zum Ausschalten"** |
+| `persist.sys.standby.mode` | `1`; `0` = off | Amlogic standby mode, enforced by the vendor daemons (`systemcontrol` / `system_suspend` / `magic_wake_daemon`). Writable via the UI (system privileges) but not by the ADB shell (SELinux) |
 | `persist.sys.hdmi.keep_awake` | `false` | Amlogic keep-awake flag for the HDMI/display path |
 | `settings global stay_on_while_plugged_in` | `0` | standard Android "stay awake while plugged in" (off) |
 
 To keep the box awake for research sessions (reversible, user-space only):
 
 ```sh
-adb shell settings put secure sleep_timeout 2147483647   # ~24.8 days, effectively "off"
-adb shell setprop persist.sys.standby.mode 0             # disable Amlogic standby mode
-adb shell setprop persist.sys.hdmi.keep_awake true       # keep HDMI path awake
+adb shell settings put secure sleep_timeout -1            # disable idle power-off timer
+adb shell setprop persist.sys.standby.mode 0              # (needs system privileges / UI)
+adb shell setprop persist.sys.hdmi.keep_awake true        # (needs system privileges / UI)
 ```
 
-Restore with: `sleep_timeout 10800000`, `persist.sys.standby.mode 1`,
-`persist.sys.hdmi.keep_awake false`. (The `persist.*` props survive reboot;
-the `settings` value is stored in `/data`.)
+Or, the cleaner route: use the operator Settings UI —
+**Einstellungen → Systemeinstellungen → Geräteeinstellungen → "Timer zum
+Ausschalten"** — and set all timers to off. This writes both
+`sleep_timeout` (to `-1`) and `persist.sys.standby.mode` (to `0`).
+
+Restore with: `sleep_timeout 10800000` (or via the UI), and
+`persist.sys.standby.mode 1` via the UI. (The `persist.*` props survive
+reboot; the `settings` value is stored in `/data`.)
 
 > **Tested 2026-11-11:** `settings put secure sleep_timeout …` succeeds from
 > the ADB shell. The two `persist.*` properties are **SELinux-protected and
 > cannot be written by the shell user** (`setprop` → "Failed to set
-> property"), so `standby.mode` / `keep_awake` can only be changed via the
-> operator Settings UI or with root. In practice, disabling the 3 h
-> `sleep_timeout` already keeps ADB/Wi-Fi stable for research sessions;
-> the vendor standby daemon then only has a very long idle window to work
-> with.
+> property"), but they **can** be changed through the operator Settings UI,
+> which runs with system privileges.
+>
+> **Result of the UI path (applied, verified):** the operator Settings at
+> *Einstellungen → Systemeinstellungen → Geräteeinstellungen → Timer zum
+> Ausschalten* ("Timer zum Ausschalten" = power-off timer) map to the
+> `sleep_timeout` setting and the vendor standby mode. After setting all
+> timers to "off" in the UI, the device reports:
+> `settings secure sleep_timeout = -1` (disabled; the UI uses `-1`, not a
+> large value) and `persist.sys.standby.mode = 0`. The box no longer enters
+> standby automatically, and the ADB-over-Wi-Fi connection stays stable.
+> Note: the UI overrode the ADB-set `sleep_timeout 2147483647` with the
+> cleaner `-1` — both mean "disabled".
 
 ## Wake / "WOL" capability
 
