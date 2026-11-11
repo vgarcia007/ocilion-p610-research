@@ -166,6 +166,11 @@ R601-contention test – pair the Xbox while the always-connected
 R601 remote is out of the equation. Second candidate: a different
 BLE gamepad (PS4/PS5/8BitDo).**
 
+A vendor-ready bug report (environment, repro steps, log evidence,
+suspected root cause, requested actions) is prepared at
+[bug-reports/bt-hid-gatt-discovery.md](bug-reports/bt-hid-gatt-discovery.md)
+for escalation to Ocilion / Skyworth.
+
 ### The reliable alternatives (in order of preference)
 
 1. **USB wired** – the box has **4 USB controllers** in the kernel
