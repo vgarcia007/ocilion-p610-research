@@ -191,6 +191,14 @@ BLE gamepad (PS4/PS5/8BitDo).**
    report structure and *might* succeed where the Xbox pad fails, but this
    is unverified and the Xbox result suggests the stack limitation is
    general, not Xbox-specific. Treat as long-shot.
+5. **Microsoft 2.4 GHz Xbox Wireless Dongle: will NOT work.** The dongle
+   is a proprietary 2.4 GHz RF transceiver, not a USB HID device – the
+   "driver" lives in the dongle's own firmware, and only Windows (and
+   niche Linux `xboxdrv` efforts) speak that protocol. The box's kernel
+   does have generic gamepad drivers (`xpad`, `usbhid` – verified loaded),
+   which is exactly why the *wired* USB tether in point 1 works, but no
+   kernel module exists for the proprietary Microsoft RF link.
+   *(Don't bother.)*
 
 **For Steam Link / Moonlight:** pair the gamepad to the **box** (via USB
 or dongle, not to the PC) – the streaming traffic is Wi-Fi/Ethernet, the
