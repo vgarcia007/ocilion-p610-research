@@ -186,6 +186,109 @@ adb shell pm uninstall de.tagesschau        # complete removal
 Note: the same PAI re-assertion pressure applies after OTAs (the FTI app
 list is operator-managed and dynamic, per the official PAI documentation).
 
+### Complete pre-installed app catalog (this device, 2026-11-11)
+
+All 25 non-system-resident (`/data`) apps with version, install class and
+removal path. `firstInstallTime = 2009-01-01` is the Android placeholder
+for "installed with the system image", i.e. before FTI.
+
+| Package | Version | Class | Removal (no root) |
+|---------|---------|-------|-------------------|
+| `com.ocilion.p6` (UI6 launcher) | 1.8.0 (26093000) | 1 – system | per-user only; do not remove |
+| `com.android.vending` (Play Store) | 53.4.17-34 | 1 – system* | per-user; see Play Store note below |
+| `com.netflix.ninja` (Netflix) | 13.2.2 build 27249 | 1 – system | `pm uninstall -k --user 0` |
+| `com.disney.disneyplus` (Disney+) | 26.20.0+rc3-2026.11.02 | 1 – system | `pm uninstall -k --user 0` |
+| `com.amazon.amazonvideo.livingroom` (Prime Video) | 6.24.13 | 1 – system | `pm uninstall -k --user 0` |
+| `com.google.android.gms` (Google Play services) | 26.43.30 | 1 – system | **do not remove** (breaks Play ecosystem) |
+| `com.google.android.tvrecommendations` | 7.4.0 | 1 – system | do not remove (Google TV core) |
+| `com.google.android.backdrop` (backdrops) | 2.3.5 | 1 – system | do not remove |
+| `com.google.android.katniss` | 7.55.87 | 1 – system | optional per-user removal |
+| `com.google.android.play.games` | 2026.10.70836 | 1 – system | per-user if not wanted |
+| `com.google.android.tv.remote.service` | 7.00.999 | 1 – system | optional (remote control) |
+| `com.google.android.tungsten.setupwraith` (setup helper) | 1.0.993403918 | 1 – system | optional (FTI helper) |
+| `com.google.android.inputmethod.latin` (Gboard TV) | 17.3.11 v7a | 1 – system | keep (only keyboard) |
+| `com.google.android.tts` (Google TTS) | 20261014 p0 | 1 – system | keep (voice/search) |
+| `com.google.android.webview` | 156.0.8078.47 | 1 – system | keep (many apps need it) |
+| `de.swr.avp.ard.tv` (ARD Mediathek) | 12.5.1 | 2 – PAI | `pm uninstall` |
+| `de.zdf.mediathek.tivi` (ZDFtivi) | 2.0 | 2 – PAI | `pm uninstall` |
+| `com.zdf.android.mediathek` (ZDF Mediathek) | 6.10.1 | 2 – PAI | `pm uninstall` |
+| `com.mediathek_3sat.android` (3sat) | 3.0.2 | 2 – PAI | `pm uninstall` |
+| `de.tagesschau` (tagesschau) | 1.0.15 | 2 – PAI | `pm uninstall` |
+| `de.rtli.tvnow` (RTL+) | 7.17.0 | 2 – PAI | `pm uninstall` |
+| `tv.arte.plus7` (ARTE) | 3.12.1 | 2 – PAI | `pm uninstall` |
+| `de.toggo` (TOGGO) | 1.73.0.0-A | 2 – PAI | `pm uninstall` |
+| `de.heute.mobile` (heute) | 2.2.0 | 2 – PAI | `pm uninstall` |
+| `de.prosiebensat1digital.seventv` (7TV) | 6.5.2-ATV | 2 – PAI | `pm uninstall` |
+
+Notes:
+
+- The 10 Class-2 apps all carry `firstInstallTime = 2026-11-11 15:23–15:26`
+  (the FTI/PAI window of the factory setup), confirming they were
+  installed at first boot, not present in the image.
+- `pm list packages -3` (third-party) reports exactly these 10.
+- *The Play Store's base APK lives **only in `/data`** (no copy in any
+  read-only partition on this build) – see the Play Store section below.
+
+### The Play Store: presence, GUI access, ADB installation
+
+**Is there a Play Store? Yes.** `com.android.vending`
+(Google Play Store, TV build) is present and **enabled** (not in
+`pm list packages -d`).
+
+**How to reach it via the GUI:**
+
+1. The Play Store registers a Leanback launcher activity
+   (`com.google.android.finsky.tvmainactivity.TvMainActivity`,
+   categories `LAUNCHER` + `LEANBACK_LAUNCHER` + `APP_MARKET`) →
+   it appears as a tile in **UI6's app list** (the horizontal app
+   drawer at the bottom of the home screen / "Apps" area).
+2. From ADB it can be launched explicitly:
+   ```sh
+   adb shell am start -n com.android.vending/com.google.android.finsky.tvmainactivity.TvMainActivity
+   ```
+   or generically: `adb shell am start -a android.intent.action.MAIN -c android.intent.category.APP_MARKET`
+3. In-app, the launcher also exposes it via the standard
+   `VIEW`/`market:` deep links (e.g. `am start -a android.intent.action.VIEW -d market://details?id=<pkg>`).
+
+**Important nuance – no read-only base APK on this build:**
+`pm path com.android.vending` resolves **only** to `/data/app/…`
+(base + `split_config.armeabi_v7a` + `split_config.de`). Unlike Netflix
+or Disney+, there is **no** Play Store APK in `/system`, `/product` or
+`/system_ext`. Consequences:
+
+- `pm install-existing com.android.vending` **cannot** restore it if it
+  was per-user-uninstalled – it would have to be re-sideloaded.
+- It is flagged `SYSTEM + UPDATED_SYSTEM_APP` (the base install
+  predates FTI, timestamp `2009-01-01`), but the on-disk copy is
+  user-writable. **Recommendation: do not remove it** – it is the app
+  channel for both the operator's PAI mechanism and any future
+  debranding installs; the Play Store itself is also needed to restore
+  Class-2 PAI apps.
+
+**Can apps be installed from ADB? Yes** – the `shell` user holds
+`android.permission.INSTALL_PACKAGES = granted=true`, so:
+
+```sh
+adb push ./app-armeabi-v7a.apk /data/local/tmp/
+adb shell pm install -r /data/local/tmp/app-armeabi-v7a.apk
+```
+
+Constraints to keep in mind:
+
+- **32-bit only:** the box runs a 32-bit userspace (see the ABI
+  section) – only APKs with an `armeabi-v7a` (or pure-Java) native
+  library will run. Play Store downloads for this device are already
+  filtered to `armeabi-v7a` (note the `split_config.armeabi_v7a.apk`
+  of the Play Store itself).
+- **No root** → `pm install` works for normal apps, but not for system
+  updates to `SYSTEM` apps and not into privileged partitions.
+- ADB-installed apps show up as user-installed (`pm list packages -3`)
+  and are fully removable with `pm uninstall <pkg>`.
+- Alternative: launch the Play Store on the TV and search there –
+  identical result, but requires a **Google account** signed in
+  (currently none is present; `dumpsys account` shows only the ARTE
+  anonymous session).
+
 ### Why the distinction exists
 
 Class 1 is the **licensing/qualification** layer: Netflix, Prime Video and
