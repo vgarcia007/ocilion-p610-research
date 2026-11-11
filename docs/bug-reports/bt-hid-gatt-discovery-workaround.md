@@ -81,4 +81,6 @@ Permanent fix requires a firmware change (increased
 LE-connection / GATT-client budget, or pairing that does not need an
 extra GATT client while a device is connected). A vendor-ready bug
 report is at [bt-hid-gatt-discovery.md](bt-hid-gatt-discovery.md);
-the escalation ticket is at [ticket-ocilion.md](ticket-ocilion.md).
+the escalation tickets are at
+[ticket-ocilion.md](ticket-ocilion.md) (German) and
+[ticket-ocilion-en.md](ticket-ocilion-en.md) (English).

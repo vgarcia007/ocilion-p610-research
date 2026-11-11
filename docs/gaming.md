@@ -200,7 +200,9 @@ Escalation documents (in `bug-reports/`):
   – the verified workaround as a standalone how-to (pair with the
   remote off; repeatable, multi-gamepad, reboot-proof).
 - [ticket-ocilion.md](bug-reports/ticket-ocilion.md) – ready-to-send
-  German support-ticket text for Ocilion.
+  support-ticket text for Ocilion (German);
+  [ticket-ocilion-en.md](bug-reports/ticket-ocilion-en.md) – same, in
+  English.
 
 ### The reliable alternatives (in order of preference)
 
