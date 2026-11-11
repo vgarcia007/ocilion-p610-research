@@ -107,6 +107,42 @@ Android. This means:
 - There is no user-visible "check for updates" outside the operator flow;
   Settings shows operator-controlled update UI.
 
+## Power / standby behavior
+
+The box aggressively enters standby when idle, which is relevant for any
+long-running ADB work (in standby, Wi-Fi goes dormant and `adbd` stops
+listening, so the ADB-over-Wi-Fi connection drops and must be re-established).
+
+Controls observed on the device (2026-11-11):
+
+| Setting | Default on this device | Effect |
+|---------|------------------------|--------|
+| `settings secure sleep_timeout` | `10800000` (3 h) | Idle timer before the box goes to standby; exposed in the operator Settings UI (System → standby/power section) |
+| `persist.sys.standby.mode` | `1` | Amlogic standby mode, enforced by the vendor daemons (`systemcontrol` / `system_suspend` / `magic_wake_daemon`) |
+| `persist.sys.hdmi.keep_awake` | `false` | Amlogic keep-awake flag for the HDMI/display path |
+| `settings global stay_on_while_plugged_in` | `0` | standard Android "stay awake while plugged in" (off) |
+
+To keep the box awake for research sessions (reversible, user-space only):
+
+```sh
+adb shell settings put secure sleep_timeout 2147483647   # ~24.8 days, effectively "off"
+adb shell setprop persist.sys.standby.mode 0             # disable Amlogic standby mode
+adb shell setprop persist.sys.hdmi.keep_awake true       # keep HDMI path awake
+```
+
+Restore with: `sleep_timeout 10800000`, `persist.sys.standby.mode 1`,
+`persist.sys.hdmi.keep_awake false`. (The `persist.*` props survive reboot;
+the `settings` value is stored in `/data`.)
+
+> **Tested 2026-11-11:** `settings put secure sleep_timeout …` succeeds from
+> the ADB shell. The two `persist.*` properties are **SELinux-protected and
+> cannot be written by the shell user** (`setprop` → "Failed to set
+> property"), so `standby.mode` / `keep_awake` can only be changed via the
+> operator Settings UI or with root. In practice, disabling the 3 h
+> `sleep_timeout` already keeps ADB/Wi-Fi stable for research sessions;
+> the vendor standby daemon then only has a very long idle window to work
+> with.
+
 ## Running init services (47 at boot)
 
 Notable services (full list obtainable via `scripts/adb-info.sh`):
