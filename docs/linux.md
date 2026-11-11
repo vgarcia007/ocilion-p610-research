@@ -105,7 +105,8 @@ approval.
   OEM key.
 - **DNL mode:** present on the SoC (USB download). Entry method unknown for
   this board; flashing from DNL is the standard provisioning path (Ocilion
-  themselves use it for RMA/provisioning).
+  themselves use it for RMA/provisioning). Detailed boot-chain and
+  bootloader analysis: [boot.md](boot.md).
 - **SD slot:** none → no standard CoreELEC/Armbian SD-boot.
 
 ## Feasibility matrix

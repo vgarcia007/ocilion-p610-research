@@ -42,6 +42,10 @@ Linux version 5.15.196-android14-11-g3d26c188ef7e-ab14657224
 
 ## Boot, A/B, Verified Boot
 
+> For the full boot-chain analysis (XBL → U-Boot → Android), the complete
+> partition map, and the flashing/recovery feasibility assessment, see
+> [boot.md](boot.md).
+
 | Property | Value | Meaning |
 |----------|-------|---------|
 | `ro.boot.verifiedbootstate` | **green** | fully verified boot chain |

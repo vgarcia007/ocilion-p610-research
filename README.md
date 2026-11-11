@@ -98,6 +98,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 |----------|----------|
 | [docs/hardware.md](docs/hardware.md) | SoC, CPU, GPU, memory, storage, video/audio codecs, connectivity, display, verified via ADB |
 | [docs/firmware.md](docs/firmware.md) | Build, kernel, partitions, verified boot, security, update mechanism, services |
+| [docs/boot.md](docs/boot.md) | Boot chain (XBL → U-Boot → Android), full partition map, bootloader lock state, flashing/recovery feasibility |
 | [docs/android.md](docs/android.md) | The Android layer: installed components, Ocilion apps, Google services, 32-bit ABI |
 | [docs/debranding.md](docs/debranding.md) | Launcher analysis, what's missing/extra vs. stock, reversible debranding plan, test plan |
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
@@ -124,5 +125,6 @@ document. Highlights:
 
 - Confirm the exact Widevine security level (L1) with a DRM probe app.
 - Validate the reversible launcher swap end-to-end (requires explicit approval).
-- Investigate whether the `env`/`misc` fastboot path can be driven over USB-DNL
-  for CoreELEC (requires unlocked or burn mode).
+- Map the Amlogic U-Boot `env` partition (p2) format and the DNL entry
+  sequence for the P610 – see [docs/boot.md](docs/boot.md) for the boot-chain
+  analysis.
