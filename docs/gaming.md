@@ -161,8 +161,10 @@ and **deletes the bond ~70 s later** (`Remove bond`,
 
 **Practical status: BT for a gamepad is unproven on this box and the
 current evidence (Xbox) is negative; USB is the reliable path.
-Open test: another BLE gamepad (PS4/PS5/8BitDo) to decide between
-hypothesis 2 and 3.**
+Next test to run (documented under Open questions): the
+R601-contention test – pair the Xbox while the always-connected
+R601 remote is out of the equation. Second candidate: a different
+BLE gamepad (PS4/PS5/8BitDo).**
 
 ### The reliable alternatives (in order of preference)
 
@@ -267,11 +269,23 @@ Documented so the limitation is explicit.
   + fresh pair; same GATT-discovery failure (no well-known services
   found, "no resources to open a new connection"). Stale-bond
   interference ruled out.
-- **R601-contention test (most promising open fix):** disconnect
-  the R601 remote (or disable BT and re-enable it, then pair the
-  Xbox before the remote re-bonds) and retry the Xbox pairing. If
-  the Realtek/`cqhci` LE-connection budget is the limit, removing
-  the always-on remote should let the GATT discovery complete.
+- **⏳ R601-contention test (NOT YET PERFORMED – most promising open
+  fix, do this next):** with the R601 remote **not bonded**, pair
+  the Xbox and watch the GATT-discovery log.
+  1. Take the R601 out of the equation: either remove its batteries,
+     or toggle Bluetooth off/on and act fast (the R601 re-bonds
+     within seconds), or pair via ADB-driven picker
+     (`am start -a android.bluetooth.devicepicker.action.LAUNCH` +
+     `input keyevent` for DPAD/OK) so the remote is not needed.
+  2. Put the Xbox in pairing mode and pair it through the picker.
+  3. Check `logcat` for the discovery result: success = "well known
+     GATT services" found + `HID_HOST` connected + a new device in
+     `getevent -i`; failure = same "No resources to open a new
+     connection" / "No well known GATT services discovered".
+  4. Put the R601 back; verify it still bonds on its own.
+  Expected outcome: if the Realtek/`cqhci` LE-connection budget is
+  the limit, discovery completes without the remote and the Xbox
+  works – a real fix for BT gamepads on this box.
 - Benchmark Lemuroid across PS1/N64/NDS cores with a working gamepad
   (install approval needed).
 - Moonlight client latency/quality over Wi-Fi 6 vs. Ethernet for a 4K60
