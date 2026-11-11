@@ -299,6 +299,18 @@ Constraints to keep in mind:
   (currently none is present; `dumpsys account` shows only the ARTE
   anonymous session).
 
+### ADB / Wi-Fi debugging does not survive a reboot
+
+*Observed 2026-11-11 (user report, plus observed `adb connect`
+"Connection refused" for several minutes after a reboot):* a box
+reboot **switches Wi-Fi/USB debugging off again**. After every
+reboot the developer option (e.g. "USB debugging" / "Wireless
+debugging") must be re-enabled in the settings UI before ADB
+works. This is normal for locked production Android builds
+(`ro.debuggable=0` + operator hardening) – the box does not persist
+the developer-option state across boots. Practical consequence for
+any future work: plan a re-enable step after each reboot.
+
 ### Why the distinction exists
 
 Class 1 is the **licensing/qualification** layer: Netflix, Prime Video and

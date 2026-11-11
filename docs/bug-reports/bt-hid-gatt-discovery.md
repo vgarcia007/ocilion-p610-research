@@ -127,9 +127,18 @@ limit is hit.
 - In the out-of-the-box state (remote bonded, as shipped) **no
   Bluetooth gamepad can be paired**: blocks Steam Link / Moonlight /
   any controller-based app in the standard wireless setup.
-- Workarounds: (a) power off the R601 (batteries out), pair the
-  gamepad, restore the remote – works, verified; (b) USB tether /
-  2.4 GHz dongle – works, but needs extra cables.
+- Workarounds, **verified on the affected unit**:
+  - (a) Power off the R601 (batteries out), pair the gamepad,
+    restore the remote – works. Repeated a second time with a
+    *second* gamepad: end state **2× gamepad + remote, all
+    connected and working simultaneously**.
+  - (b) A full **reboot does not break the workaround**: all bonded
+    devices (remote + both gamepads) remain bonded after reboot and
+    the controllers reconnect automatically (user-verified; ADB
+    cross-check: both Xbox controllers received re-initiated LE
+    connections from the box within ~1 min of BT startup). Only
+    the initial pairing needs the remote powered off.
+  - (c) USB tether / 2.4 GHz dongle – works, but needs extra cables.
 
 ## 7. Requested vendor action
 

@@ -166,17 +166,31 @@ GATT discovery completed, HID profile activated, controller works.
 After restoring the R601, **both work simultaneously**. So the fix
 is a workaround, not a firmware fix:
 1. Power off / unpair the R601 (batteries out is simplest).
+   Optionally: power off any already-connected BT gamepad, and
+   attach a USB keyboard so the box stays controllable while the
+   remote is out.
 2. Pair the BT gamepad (Xbox pairing button, picker opens via
    *Einstellungen → Bluetooth → Zubehör hinzufügen* or the system
    "connect a controller" prompt; ADB: `am start -n
    com.android.tv.settings/.accessories.AddAccessoryActivity`).
 3. Restore the R601 – it re-bonds automatically and coexists with
-   the gamepad.
-Caveat: this worked for *pairing*; a vendor fix is still requested
+   the gamepad(s).
+4. **Repeatable:** the same procedure was used a second time
+   (R601 out, second Xbox paired while the first was off, then
+   everything switched back on). End state: **2× Xbox + R601 all
+   connected and working** – the failure does not depend on which
+   slot the new device takes.
+5. **Survives reboot:** after a full box reboot all three bonded
+   devices reconnect on their own; no re-pairing needed. The
+   bonds are persistent; only the *pairing* operation needs the
+   remote to be out of the way.
+
+Caveat: this works for *pairing*; a vendor fix is still requested
 so that gamepads can be paired while the remote is active (see the
 bug report). A permanently bonded but disconnected gamepad (e.g. a
 second Xbox, a7:e2) is harmless – it simply stays in the bonded
-list. USB tether remains the zero-setup path.
+list and reconnects when switched on. USB tether remains the
+zero-setup path.
 
 A vendor-ready bug report (environment, repro steps, log evidence,
 **confirmed root cause**, requested actions) is at
@@ -310,6 +324,20 @@ Documented so the limitation is explicit.
   first Xbox and failed again with "No resources to open a new
   connection" – the error recurs exactly when the remote is
   connected.
+  **Follow-up (same day, second round):** with a USB keyboard
+  attached, the *second* Xbox was then paired the same way (R601
+  batteries out, first Xbox powered off, second paired, all
+  switched back on) → **2× Xbox + R601 connected and working
+  together**. A full **box reboot** afterwards did not break
+  anything (user-verified): all three devices are bonded
+  persistently and the controllers reconnect automatically.
+  ADB cross-check after that reboot (uptime 7 min): all three
+  bonds intact, the R601 auto-reconnected, and the ACL log shows
+  the box **actively re-initiating LE connections to both Xbox
+  controllers at 22:06:32 and 22:07:16** (shortly after BT
+  came up) – i.e. the reconnection is box-driven, not just the
+  controllers hounding the box. (Note: Wi-Fi/ADB debugging
+  reverts off after every reboot – see android.md.)
   **Conclusion:** the failure is caused by the **always-connected
   R601 holding the LE/GATT client resources** that the pairing
   discovery needs – a firmware/controller budget issue, not a
