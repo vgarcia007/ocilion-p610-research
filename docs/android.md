@@ -240,15 +240,16 @@ Notes:
 - Technically it registers a Leanback launcher activity
   (`com.google.android.finsky.tvmainactivity.TvMainActivity`,
   categories `LAUNCHER` + `LEANBACK_LAUNCHER` + `APP_MARKET`).
-- **However, on this unit it is NOT shown in the UI6 app list**
-  (observed 2026-11-11): the `LEANBACK_LAUNCHER` query returns the
-  Play Store alongside YouTube, 7TV, ARTE etc., but the UI6
-  launcher only displays a curated subset – the Play Store tile is
-  missing from the on-screen app drawer while the box has **no
-  Google account signed in**. The launcher's own app-list storage
-  is not readable from the shell (`run-as` unavailable, package not
-  debuggable), so the exact hiding rule (account-gated vs.
-  operator config) could not be inspected.
+- **On this unit it is account-gated in the UI6 app list**
+  (observed & verified 2026-11-11): with **no Google account
+  signed in**, the UI6 app drawer does not show the Play Store
+  tile (even though the `LEANBACK_LAUNCHER` query lists it).
+  **After signing in a Google account in the Settings UI, the
+  Play Store tile appears** – confirming the launcher hides it
+  without an account (operator-intended: keep customers away from
+  the store until they log in). The launcher's own app-list
+  storage is not readable from the shell (`run-as` unavailable,
+  package not debuggable).
 - It can be launched explicitly from ADB (verified – it comes up
   on `UnauthenticatedMainActivity`, the no-account screen):
   ```sh
@@ -258,11 +259,6 @@ Notes:
   `adb shell am start -a android.intent.action.MAIN -c android.intent.category.APP_MARKET`
 - In-app, it also responds to the standard `VIEW`/`market:` deep
   links (e.g. `am start -a android.intent.action.VIEW -d market://details?id=<pkg>`).
-
-> **To verify next:** sign in with a Google account and check whether
-> the Play Store tile then appears in the UI6 app list (likely
-> account-gated; would confirm the launcher hides it without an
-> account).
 
 **Important nuance – no read-only base APK on this build:**
 `pm path com.android.vending` resolves **only** to `/data/app/…`
