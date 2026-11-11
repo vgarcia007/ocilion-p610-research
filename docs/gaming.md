@@ -112,9 +112,22 @@ and **deletes the bond ~70 s later** (`Remove bond`,
   So "BT HID is broken on this box" is **too strong**: simple BLE HID
   devices (remote/keyboard) do complete the full handshake.
 - The Xbox bond itself succeeds repeatedly (`SMP Pairing success`,
-  `Encryption success`, `bond_state:1`), so SMP/L2CAP/GATT transport
-  is fine. Only the **HID profile activation** (report-descriptor
-  exchange / virtual cable) drops within ~6 ms.
+  `Encryption success`, `bond_state:1`), so SMP bonding is fine.
+- **Refined root cause (3rd attempt, clean controller after factory
+  reset, 2026-11-11 19:40):** the failure is inside **GATT service
+  discovery**, not (only) in the profile layer:
+  ```
+  GATTC_Discover ... disc_type=2/4              # discovery starts
+  bta_gattc_process_api_open: No resources to open a new connection
+  bta_dm_search_cmpl: GATT active but no BLE connection,
+                      likely disconnected midway through
+  btif_dm_search_services_evt: No well known GATT services discovered
+  ```
+  i.e. the LE link drops (or the stack refuses a second GATT client
+  with "no resources") **during** service discovery, so the **HID
+  over GATT service is never found**, and HID profile activation can
+  never start. The earlier "drops in ~6 ms" observation was the
+  profile layer giving up because discovery had already failed.
 - The Xbox controller also **keeps trying to reconnect to its previous
   host** (PC/console) after the box deletes the bond – its LED state
   reflects that, not a box connection. This is standard Xbox behavior
@@ -122,19 +135,29 @@ and **deletes the bond ~70 s later** (`Remove bond`,
 
 **Where a fix could live (hypotheses, ordered):**
 
-1. **Controller side first:** remove the old bond on any previous host
-   (PC: Settings → Bluetooth → remove device), then re-pair fresh.
-   Also try a factory reset of the controller (hold Xbox + Pairing
-   button for ~10 s). Unverified.
-2. **Different BLE gamepad** (PS4/PS5/8BitDo): the failing step is the
-   HID report-descriptor/virtual-cable phase – another device with a
-   different report layout might succeed. Unverified, but the R601
-   proof shows the path *can* work, so this is worth testing.
-3. **Stack/firmware level:** if all BT gamepads fail at the same
+1. **Connection-resource contention with the R601 remote (new,
+   testable):** the R601 holds a permanent LE/HID connection
+   (`BTHH_CONN_STATE_CONNECTED`, its own GATT client). The failing
+   error is literally **"No resources to open a new connection"**
+   while the stack tries to run GATT discovery for the Xbox. If the
+   Realtek controller/`cqhci` driver has a small LE-connection or
+   GATT-client budget, the always-connected remote could be
+   starving the pairing process. **Test:** temporarily disconnect /
+   take out the R601 (or switch the box's BT off+on and pair the
+   Xbox *before* the remote reconnects), then pair the Xbox.
+2. **Controller side:** remove the old bond on any previous host
+   (PC: Settings → Bluetooth → remove device) and factory-reset the
+   controller (Xbox + Pairing button ~10 s). **Done 2026-11-11, did
+   not change the outcome** (3rd attempt failed the same way, with
+   the refined root cause above).
+3. **Different BLE gamepad** (PS4/PS5/8BitDo): another device might
+   survive the GATT-discovery phase – worth testing, since the R601
+   proof shows the LE HID path can work on this box.
+4. **Stack/firmware level:** if all BT gamepads fail at the same
    step, the bug is in the `cqhci`/Realtek combo or the Android BT
-   shim's HID-over-GATT handling – only fixable via a firmware update
-   (operator OTA) or root; not user-fixable.
-4. **USB remains the guaranteed path** (see alternatives below).
+   shim's GATT-client/HID-over-GATT handling – only fixable via a
+   firmware update (operator OTA) or root; not user-fixable.
+5. **USB remains the guaranteed path** (see alternatives below).
 
 **Practical status: BT for a gamepad is unproven on this box and the
 current evidence (Xbox) is negative; USB is the reliable path.
@@ -240,9 +263,15 @@ Documented so the limitation is explicit.
   8BitDo pad is a real candidate to close the gap. If it also fails at
   the same ~6 ms point, the bug is in the platform stack/firmware
   (`cqhci`/Realtek combo) and only an operator OTA could fix it.
-- **Xbox retest with clean state:** remove the Xbox bond on all
-  previous hosts, factory-reset the controller, re-pair – rule out
-  stale-bond interference.
+- **Xbox retest with clean state:** DONE 2026-11-11 – factory reset
+  + fresh pair; same GATT-discovery failure (no well-known services
+  found, "no resources to open a new connection"). Stale-bond
+  interference ruled out.
+- **R601-contention test (most promising open fix):** disconnect
+  the R601 remote (or disable BT and re-enable it, then pair the
+  Xbox before the remote re-bonds) and retry the Xbox pairing. If
+  the Realtek/`cqhci` LE-connection budget is the limit, removing
+  the always-on remote should let the GATT discovery complete.
 - Benchmark Lemuroid across PS1/N64/NDS cores with a working gamepad
   (install approval needed).
 - Moonlight client latency/quality over Wi-Fi 6 vs. Ethernet for a 4K60
