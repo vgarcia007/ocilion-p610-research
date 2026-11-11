@@ -5,16 +5,26 @@ redacted where they identify the customer; the log excerpts use the
 stack's own `XX:XX:XX:XX` masking.*
 
 **Status:** open · **Reproduced:** 3× on one unit (incl. after controller
-factory reset) · **Severity:** functional – all BT gamepads unusable
+factory reset) · **Root cause:** confirmed by isolation test 2026-11-11
+(see §5) · **Workaround:** found (pair with the remote powered off, see
+§6) · **Severity:** functional – BT gamepad pairing blocked while the
+bundled remote is connected
 
 ## 1. Summary
 
-Pairing any Bluetooth **gamepad** to the P610 fails inside the system
-pairing flow. The SMP bond and LE encryption succeed, but **GATT service
-discovery aborts** with `No resources to open a new connection` and
-reports `No well known GATT services discovered`. The HID profile can
-therefore never activate; the box deletes the bond ~70 s later and the
-UI shows "Kopplung nicht möglich" (pairing failed).
+Pairing a Bluetooth **gamepad** to the P610 **fails while the bundled
+R601 remote is connected** (the out-of-the-box state): the SMP bond and
+LE encryption succeed, but **GATT service discovery aborts** with
+`No resources to open a new connection` and reports `No well known GATT
+services discovered`. The HID profile never activates; the box deletes
+the bond ~70 s later and the UI shows "Kopplung nicht möglich"
+(pairing failed).
+
+**Confirmed by isolation test:** with the R601 powered off, the same
+controller pairs successfully on the first attempt, and after restoring
+the remote both operate simultaneously (see §5). Root cause: the
+LE-connection / GATT-client resource budget is exhausted by the
+remote's permanent connection.
 
 Bluetooth input **works for the shipped R601 remote** (BLE), so the
 issue is specific to the gamepad-class HID/GATT path, not to BT in
@@ -76,42 +86,65 @@ persistent HID connection (`shim::legacy::hid … BTHH_CONN_STATE_CONNECTED
 ready:T`, ACL handle 0x0010 since 16:09:57 boot). Simple BLE HID
 therefore works on this unit.
 
-## 5. Suspected root cause (for vendor triage)
+## 5. Root cause (confirmed by isolation test, 2026-11-11)
 
-- **LE connection / GATT client resource budget:** with the R601's
-  permanent connection (1 LE ACL + its GATT clients) already open, the
-  stack refuses the second GATT client needed for pairing discovery
-  (`No resources to open a new connection`). The Realtek combo /
-  `cqhci` driver or the BT shim may be configured with a too-small
-  max-connected / max-GATT-clients budget for a host that always keeps
-  a remote bonded.
-- Secondary: even when the second GATT client is opened, discovery
-  shows the LE link dropping "midway" – a possible controller/firmware
-  scheduling issue on the shared combo chip.
+**LE connection / GATT client resource budget.** The R601 remote holds
+a **permanent LE connection** (ACL + GATT clients) from boot. While it
+is connected, the stack refuses the additional GATT clients needed for
+gamepad pairing discovery (`No resources to open a new connection`),
+discovery aborts, the HID profile never activates, and the box deletes
+the bond. The Realtek RTL8852BS combo / `cqhci` driver or the BT shim
+is evidently configured with a too-small max-connected /
+max-GATT-clients budget for a host that always keeps its remote
+connected.
 
-**Open isolation test (not yet performed, needs customer action):**
-pair the gamepad while the R601 is temporarily out of the equation
-(batteries out / BT toggle). If discovery then completes, the resource
-budget is confirmed as the cause.
+**Isolation test (performed on the same unit):**
+- R601 batteries removed → its LE ACL dropped (CONNECTION_TIMEOUT).
+- Second Xbox controller (`ad:1c`) put into pairing mode and paired
+  via the stock *Zubehör hinzufügen* picker (launched via ADB, so no
+  remote was needed).
+- **Pairing succeeded on the first attempt:** GATT discovery returned
+  the HID (0x1812) and Battery (0x180f) services,
+  `BTHH_CONN_STATE_CONNECTED ready:T`, the controller appeared as an
+  input device and works flawlessly. No "No resources" / "No well
+  known GATT services" events during the successful pairing (vs.
+  every previous attempt).
+- R601 restored → it re-bonds automatically → **remote and gamepad
+  operate simultaneously.**
+- Additional confirmation: ~3 min after the R601 came back, the box
+  re-triggered GATT discovery for the *first* Xbox (`a7:e2`) and
+  immediately failed again with `No resources to open a new
+  connection` – i.e. the error recurs exactly when the remote is
+  connected and is not a one-off state.
+
+Secondary observation: during the failed attempts the LE link was
+reported to drop "midway" during discovery – a possible controller/
+firmware scheduling issue on the shared combo chip once the resource
+limit is hit.
 
 ## 6. Impact
 
-- No Bluetooth gamepad can be used: blocks Steam Link / Moonlight /
-  any controller-based app in the standard (wireless) setup.
-- Workaround exists (USB tether / 2.4 GHz dongle) but is not the
-  intended UX and needs extra cables.
+- In the out-of-the-box state (remote bonded, as shipped) **no
+  Bluetooth gamepad can be paired**: blocks Steam Link / Moonlight /
+  any controller-based app in the standard wireless setup.
+- Workarounds: (a) power off the R601 (batteries out), pair the
+  gamepad, restore the remote – works, verified; (b) USB tether /
+  2.4 GHz dongle – works, but needs extra cables.
 
 ## 7. Requested vendor action
 
 1. Check the BT controller firmware / `cqhci` configuration:
    `max_num_le_connections`, GATT client allocation in the Android BT
-   shim for this combo chip.
-2. Verify the pairing flow with the R601 **and without** it
-   (isolation of the resource hypothesis).
+   shim for this combo chip; the budget must allow a persistent remote
+   connection **plus** one concurrent gamepad pairing/discovery.
+2. Fix the pairing flow so a gamepad can be paired **while the R601
+   is connected** (the current out-of-the-box state) – the isolation
+   test in §5 reproduces both the failure and the successful path.
 3. Test a second gamepad class (PS4/PS5, 8BitDo) to confirm the
    failure is device-class general, not Xbox-specific.
-4. Fix or, if a hardware/firmware limitation, document the supported
-   gamepad input paths in the operator manual.
+4. Until a firmware fix ships: document the working pairing procedure
+   (remote powered off during pairing) in the operator manual /
+   customer FAQ.
 
 ## 8. Contact / data availability
 

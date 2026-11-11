@@ -159,17 +159,29 @@ and **deletes the bond ~70 s later** (`Remove bond`,
    firmware update (operator OTA) or root; not user-fixable.
 5. **USB remains the guaranteed path** (see alternatives below).
 
-**Practical status: BT for a gamepad is unproven on this box and the
-current evidence (Xbox) is negative; USB is the reliable path.
-Next test to run (documented under Open questions): the
-R601-contention test – pair the Xbox while the always-connected
-R601 remote is out of the equation. Second candidate: a different
-BLE gamepad (PS4/PS5/8BitDo).**
+**Practical status: SOLVED 2026-11-11.** The R601-contention test
+confirmed the root cause: with the R601 remote powered off (no LE
+connection), the Xbox paired successfully on the first attempt –
+GATT discovery completed, HID profile activated, controller works.
+After restoring the R601, **both work simultaneously**. So the fix
+is a workaround, not a firmware fix:
+1. Power off / unpair the R601 (batteries out is simplest).
+2. Pair the BT gamepad (Xbox pairing button, picker opens via
+   *Einstellungen → Bluetooth → Zubehör hinzufügen* or the system
+   "connect a controller" prompt; ADB: `am start -n
+   com.android.tv.settings/.accessories.AddAccessoryActivity`).
+3. Restore the R601 – it re-bonds automatically and coexists with
+   the gamepad.
+Caveat: this worked for *pairing*; a vendor fix is still requested
+so that gamepads can be paired while the remote is active (see the
+bug report). A permanently bonded but disconnected gamepad (e.g. a
+second Xbox, a7:e2) is harmless – it simply stays in the bonded
+list. USB tether remains the zero-setup path.
 
 A vendor-ready bug report (environment, repro steps, log evidence,
-suspected root cause, requested actions) is prepared at
+**confirmed root cause**, requested actions) is at
 [bug-reports/bt-hid-gatt-discovery.md](bug-reports/bt-hid-gatt-discovery.md)
-for escalation to Ocilion / Skyworth.
+– ready for escalation to Ocilion / Skyworth.
 
 ### The reliable alternatives (in order of preference)
 
@@ -282,23 +294,28 @@ Documented so the limitation is explicit.
   + fresh pair; same GATT-discovery failure (no well-known services
   found, "no resources to open a new connection"). Stale-bond
   interference ruled out.
-- **⏳ R601-contention test (NOT YET PERFORMED – most promising open
-  fix, do this next):** with the R601 remote **not bonded**, pair
-  the Xbox and watch the GATT-discovery log.
-  1. Take the R601 out of the equation: either remove its batteries,
-     or toggle Bluetooth off/on and act fast (the R601 re-bonds
-     within seconds), or pair via ADB-driven picker
-     (`am start -a android.bluetooth.devicepicker.action.LAUNCH` +
-     `input keyevent` for DPAD/OK) so the remote is not needed.
-  2. Put the Xbox in pairing mode and pair it through the picker.
-  3. Check `logcat` for the discovery result: success = "well known
-     GATT services" found + `HID_HOST` connected + a new device in
-     `getevent -i`; failure = same "No resources to open a new
-     connection" / "No well known GATT services discovered".
-  4. Put the R601 back; verify it still bonds on its own.
-  Expected outcome: if the Realtek/`cqhci` LE-connection budget is
-  the limit, discovery completes without the remote and the Xbox
-  works – a real fix for BT gamepads on this box.
+- **✅ R601-contention test (PERFORMED 2026-11-11 – ROOT CAUSE
+  CONFIRMED):** R601 batteries removed → its permanent LE ACL
+  dropped (CONNECTION_TIMEOUT) → paired the second Xbox
+  (`ad:1c`) via the ADB-launched `AddAccessoryActivity` picker.
+  **Result: pairing succeeded on the first attempt.** GATT discovery
+  returned the HID (0x1812) and Battery (0x180f) services,
+  `BTHH_CONN_STATE_CONNECTED ready:T`, and the controller appeared
+  as an input device (vendor 0x119b, `Xbox Wireless Controller`)
+  working flawlessly – no "No resources" events during the
+  successful pairing (vs. every single previous attempt).
+  R601 restored afterward → re-bonded automatically → **both
+  devices work simultaneously.** Bonus confirmation: ~3 min after
+  the R601 returned, the box re-triggered GATT discovery for the
+  first Xbox and failed again with "No resources to open a new
+  connection" – the error recurs exactly when the remote is
+  connected.
+  **Conclusion:** the failure is caused by the **always-connected
+  R601 holding the LE/GATT client resources** that the pairing
+  discovery needs – a firmware/controller budget issue, not a
+  hardware defect. Workaround: temporarily unpair/power-off the
+  R601, pair the gamepad, restore the R601. Permanent fix requires
+  an OTA (see bug report).
 - Benchmark Lemuroid across PS1/N64/NDS cores with a working gamepad
   (install approval needed).
 - Moonlight client latency/quality over Wi-Fi 6 vs. Ethernet for a 4K60
