@@ -129,6 +129,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
 | [docs/operators.md](docs/operators.md) | Known operators/providers deploying the P610 (evidence-graded) |
+| [docs/rooting.md](docs/rooting.md) | Rooting: current state, realistic paths, watch list |
 | [docs/links.md](docs/links.md) | Official sources, datasheets, and related projects |
 
 ## Tooling

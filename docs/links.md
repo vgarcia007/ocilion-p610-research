@@ -38,9 +38,17 @@
   available, "Home Button Fix" for forcing a non-default launcher:
   <https://github.com/leanbitlab-org/LtvLauncher>
 - **coreelec-android-dualboot-twilight** – CoreELEC + Android dual-boot on
-  eMMC for Amlogic (Xiaomi S905X4 boxes); documents the Amlogic
-  `env`/`misc`/GPT boot-gate technique:
+  eMMC for the Xiaomi TV Stick 4K 2nd Gen (Amlogic s7d / **S905X5M**,
+  same SoC as the P610); documents the Amlogic `env`/`misc`/GPT
+  boot-gate technique on a *rooted + unlocked* s905x5m-class device:
   <https://github.com/samtheruby/coreelec-android-dualboot-twilight>
+- **slimBOXtv** – active community firmware project for Amlogic TV
+  boxes with **rooted (Magisk) builds for the S905X5M/S905A family**
+  (X96 M300, Vontar X5, Tanix TX5 Plus 2025, …); Vontar X5 stock base
+  is the same Amlogic `ross` reference as the P610. The main watch
+  list for a P610 path (see [rooting.md](rooting.md)):
+  <https://slimboxtv.ru> · XDA thread "project slimBOXtv" (4152049) ·
+  4PDA topic 993324
 - **CoreELEC device-tree table** (S905X5M = `s7d_s905x5m_*`):
   <https://coreelec.org/dtb/>
 - **CoreELEC** (project, Amlogic-ng, kernel 5.15.196):
