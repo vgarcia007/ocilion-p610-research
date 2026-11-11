@@ -119,8 +119,15 @@ Practical consequences:
 ## Forced / pre-installed apps ("PAI") and their removability
 
 The operator enforces a set of apps (per the PAI/FTI docs: Netflix, Prime
-Video, Disney+ are "fix vorhanden und nicht deinstallierbar"). On device
-this shows up as **two distinct classes**, which behave very differently:
+Video, Disney+ are "fix vorhanden und nicht deinstallierbar"). **The exact
+forced-app set is market- and operator-specific**: this unit is provisioned
+for **Germany / komro GmbH** (the operator identity is bound at
+provisioning time, visible on-device as the operator key `ro.oem.key1` and
+`ro.boot.product.hardware.sku`; no operator-specific packages are present
+– branding and app lists are pushed from the provisioning backend). Other
+markets/operators on the same hardware will have different app sets.
+On *this* device it shows up as **two distinct classes**, which behave
+very differently:
 
 ### Class 1 – System apps (cannot be uninstalled, only disabled)
 
@@ -210,6 +217,10 @@ describes as an adjustable, operator-managed list.
   without bricking the boot? (Requires explicit approval; risk: boot-loop if
   init depends on it – it holds system-fixed permissions, so likely
   boot-critical.)
+- **Market/operator dependence:** the PAI list, forced apps, and branding
+  are provisioned per market/operator (this unit: Germany / komro GmbH).
+  Cross-check findings against the official PAI doc for *other* markets
+  before generalizing.
 - **PAI re-assertion:** does an operator OTA actually reinstall Class-1 /
   Class-2 apps that were per-user-uninstalled or disabled? Observe across an
   OTA. (Requires explicit approval to trigger/observe.)

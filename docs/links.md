@@ -16,7 +16,10 @@
 ## Community / third-party
 
 - Android TV Guide – Ocilion P610 entry (Skyworth HP4C06/HP4CD, S905X5M,
-  Widevine L1, certified devices list):
+  Widevine L1, certified devices list). Also lists other P610 operators
+  (Deutsche GigaNetz, Kabelfernsehen Bödeli, Telenec, Gemeindewerke
+  Nümbrecht) – useful evidence that the same hardware ships under
+  different operator brands/markets:
   <https://www.androidtv-guide.com/pay-tv-provider/ocilion-p610/>
 - Geekbench entries under the Skyworth/Ocilion-p610 fingerprint
   (useful for 32-bit vs 64-bit performance comparison):

@@ -16,6 +16,17 @@ Android TV system with the standard Google TV component set is present underneat
 the Ocilion skin – the box behaves much more like a stock Google TV device than
 most operator boxes.
 
+> **Market / operator context.** The unit researched here is provisioned for the
+> **German market** and branded for the operator **komro GmbH**. Findings that
+> depend on operator provisioning – the PAI app list (German broadcasters:
+> ARD/ZDF/RTL+/tagesschau/3sat/arte/toggo/heute/seventv), launcher branding,
+> OTA behavior, and some Settings-UI wording – are **market- and
+> operator-specific**. Boxes in other markets or with other operators are
+> based on the same Skyworth/Ocilion hardware and firmware family, but may
+> ship different pre-installed app sets, language defaults, and provisioning
+> backends. Hardware, boot/security, and debranding conclusions in this repo
+> are not market-dependent; the app-policy findings are.
+
 ## Key specifications (verified via ADB where noted)
 
 | Item | Spec |
