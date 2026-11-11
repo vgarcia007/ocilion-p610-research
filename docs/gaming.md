@@ -49,11 +49,33 @@ path on this box is **USB** (wired or 2.4 GHz dongle).
 
 ## Gamepad / controller input (important for streaming & emulation)
 
-### Bluetooth HID: broken for gamepads on this firmware (tested 2026-11-11)
+### Bluetooth gamepad pairing: Xbox fails at the HID profile step (tested 2026-11-11)
+
+*Note (2026-11-11, same day): the R601 remote is also a **BLE** device and
+works on the same HID path, so BT HID is not categorically broken –
+see the interpretation below for the refined diagnosis and the fix
+candidates.*
 
 **Test:** Xbox Wireless Controller (modern, BLE-capable) paired against the
 box through the Settings UI (*Einstellungen → Systemeinstellungen →
 Bluetooth → Zubehör hinzufügen*).
+
+**The "connect a controller" system flow:** after installing a
+controller-using app (e.g. Steam Link from the Play Store), Android TV
+shows a system prompt "connect a controller". Pressing continue fires
+the intent `com.google.android.intent.action.CONNECT_INPUT`, which
+resolves to **`com.android.tv.settings/.accessories.AddAccessoryActivity`**
+– the standard Bluetooth device picker. That activity **is present** on
+this build (verified via `cmd package resolve-activity`), so the
+"missing assistant" is not missing; it leads into the same BT stack
+that fails at the HID profile step below. It also has the `LAUNCH`
+action (`android.bluetooth.devicepicker.action.LAUNCH`), so it can be
+launched directly:
+
+```sh
+adb shell am start -a android.bluetooth.devicepicker.action.LAUNCH \
+  -n com.android.tv.settings/.accessories.BluetoothDevicePickerActivity
+```
 
 **What works:**
 
@@ -79,14 +101,45 @@ and **deletes the bond ~70 s later** (`Remove bond`,
 `HID_HOST connection policy → -1`), which is why the GUI finally reports
 "Kopplung nicht möglich" (pairing not possible).
 
-**Interpretation:** the platform BT stack (Realtek, SDIO, shared with the
-RTL8852BS Wi-Fi chip) implements only the *simple* HID/keyboard profile
-enough for the R601 remote (which shows up as "Ocilion BLE Keyboard"), but
-the **full HID Report-Descriptor path used by gamepads fails immediately**.
-This is a known pattern on cheap Android TV boxes: the R601/keyboard works,
-gamepads don't. The failure is on the box side, not the controller.
+**Interpretation & what this rules out:**
 
-**Practical conclusion: do not rely on Bluetooth for a gamepad on this box.**
+- The kernel HCI driver is **`cqhci`** (Amlogic SDIO HCI module,
+  `cqhci` in `lsmod`) – a platform driver for the Realtek combo chip
+  shared with the RTL8852BS Wi-Fi, not the generic `btusb` path.
+- **The R601 remote is also a BLE device** (bond type `[LE]`,
+  `transport:BT_TRANSPORT_LE`) and it **works** through the very same
+  `shim::legacy::hid` (BTHH) path that the Xbox controller fails on.
+  So "BT HID is broken on this box" is **too strong**: simple BLE HID
+  devices (remote/keyboard) do complete the full handshake.
+- The Xbox bond itself succeeds repeatedly (`SMP Pairing success`,
+  `Encryption success`, `bond_state:1`), so SMP/L2CAP/GATT transport
+  is fine. Only the **HID profile activation** (report-descriptor
+  exchange / virtual cable) drops within ~6 ms.
+- The Xbox controller also **keeps trying to reconnect to its previous
+  host** (PC/console) after the box deletes the bond – its LED state
+  reflects that, not a box connection. This is standard Xbox behavior
+  and can interfere with re-pairing (it prefers the older bond).
+
+**Where a fix could live (hypotheses, ordered):**
+
+1. **Controller side first:** remove the old bond on any previous host
+   (PC: Settings → Bluetooth → remove device), then re-pair fresh.
+   Also try a factory reset of the controller (hold Xbox + Pairing
+   button for ~10 s). Unverified.
+2. **Different BLE gamepad** (PS4/PS5/8BitDo): the failing step is the
+   HID report-descriptor/virtual-cable phase – another device with a
+   different report layout might succeed. Unverified, but the R601
+   proof shows the path *can* work, so this is worth testing.
+3. **Stack/firmware level:** if all BT gamepads fail at the same
+   step, the bug is in the `cqhci`/Realtek combo or the Android BT
+   shim's HID-over-GATT handling – only fixable via a firmware update
+   (operator OTA) or root; not user-fixable.
+4. **USB remains the guaranteed path** (see alternatives below).
+
+**Practical status: BT for a gamepad is unproven on this box and the
+current evidence (Xbox) is negative; USB is the reliable path.
+Open test: another BLE gamepad (PS4/PS5/8BitDo) to decide between
+hypothesis 2 and 3.**
 
 ### The reliable alternatives (in order of preference)
 
@@ -182,9 +235,14 @@ Documented so the limitation is explicit.
   Micro-USB/USB-C tether (or a USB 2.4 GHz dongle) and verify it appears
   in `getevent -i` and is accepted by Steam Link / Lemuroid. If it works,
   close the BT-HID gap with a documented working path.
-- **Second BT gamepad (long-shot):** try a PS4/PS5 or 8BitDo pad via
-  Bluetooth to check whether the HID profile failure is Xbox-specific or
-  general (the log evidence points to general).
+- **Second BT gamepad (important, no longer long-shot):** the R601
+  remote proves the BLE HID path can work on this box, so a PS4/PS5 or
+  8BitDo pad is a real candidate to close the gap. If it also fails at
+  the same ~6 ms point, the bug is in the platform stack/firmware
+  (`cqhci`/Realtek combo) and only an operator OTA could fix it.
+- **Xbox retest with clean state:** remove the Xbox bond on all
+  previous hosts, factory-reset the controller, re-pair – rule out
+  stale-bond interference.
 - Benchmark Lemuroid across PS1/N64/NDS cores with a working gamepad
   (install approval needed).
 - Moonlight client latency/quality over Wi-Fi 6 vs. Ethernet for a 4K60
