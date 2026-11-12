@@ -214,7 +214,9 @@ Escalation documents (in `bug-reports/`):
    - **Xbox One S / One X / Series:** Bluetooth only, **but** with a
      Micro-USB / USB-C **tether cable** straight to the box they behave
      like USB controllers (the data pins are present on the controller
-     port). This is the cleanest path for a modern Xbox pad.
+     port). This is the cleanest path for a modern Xbox pad –
+     **verified 2026-11-12:** a current Xbox Series pad on a USB
+     tether works instantly, zero setup.
    - **PS4 / PS5:** USB-C wired.
    - USB HID on Android boxes is very reliable because it uses a
      completely different (and mature) stack path than BT HID.
@@ -302,10 +304,11 @@ Documented so the limitation is explicit.
 
 ## Open questions & planned experiments
 
-- **USB gamepad test (next):** plug the Xbox Wireless Controller in via
-  Micro-USB/USB-C tether (or a USB 2.4 GHz dongle) and verify it appears
-  in `getevent -i` and is accepted by Steam Link / Lemuroid. If it works,
-  close the BT-HID gap with a documented working path.
+- **USB gamepad test: DONE 2026-11-12 (user-verified).** A current
+  **Xbox Series** controller connected via USB tether cable works
+  **instantly and correctly** – no pairing, no setup. The USB path
+  is confirmed as the reliable gamepad input on this box, closing
+  the BT-HID gap with a documented working alternative.
 - **Second BT gamepad (important, no longer long-shot):** the R601
   remote proves the BLE HID path can work on this box, so a PS4/PS5 or
   8BitDo pad is a real candidate to close the gap. If it also fails at
