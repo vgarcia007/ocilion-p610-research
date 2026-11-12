@@ -195,6 +195,13 @@ considered and rejected as the primary mechanism – it is clunky
 a boot autostart, which the locked build does not expose.
 `svc power stayon ac` is the clean, official keep-awake path.
 
+The USB-default was filed with Ocilion as an **improvement
+suggestion** (not a defect): see
+[bug-reports/improvement-standby-default.md](bug-reports/improvement-standby-default.md)
+(German) and
+[improvement-standby-default-en.md](bug-reports/improvement-standby-default-en.md)
+(English).
+
 ## Wake / "WOL" capability
 
 "Can the box be woken remotely?" – the answer depends on what "WOL" means:

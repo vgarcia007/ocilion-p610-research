@@ -132,7 +132,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/debranding.md](docs/debranding.md) | Launcher analysis, what's missing/extra vs. stock, reversible debranding plan, test plan |
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
-| [docs/bug-reports/](docs/bug-reports/) | BT gamepad GATT bug: root cause, verified workaround, vendor report, ready-to-send ticket |
+| [docs/bug-reports/](docs/bug-reports/) | BT gamepad GATT bug: root cause, verified workaround, vendor report, ready-to-send tickets; plus the keep-awake default improvement suggestion |
 | [docs/operators.md](docs/operators.md) | Known operators/providers deploying the P610 (evidence-graded) |
 | [docs/rooting.md](docs/rooting.md) | Rooting: current state, realistic paths, watch list |
 | [docs/links.md](docs/links.md) | Official sources, datasheets, and related projects |
