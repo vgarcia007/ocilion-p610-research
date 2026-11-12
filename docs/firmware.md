@@ -228,6 +228,36 @@ at activation and stored in SELinux-protected
 `privapp_data_file`), backend retention/sampling, and whether the
 poll rate changes in standby (only the active state was observed).
 
+### A/B test: does the operator API reflect live box changes? (verified 2026-11-12)
+
+Yes. Change applied on the box via ADB: media volume index raised
+from 21 to 25 (5× `input keyevent 24`). Operator API query before
+vs. after (operator-side, authenticated; ~90 s after the change):
+
+| API field | Before | After |
+|-----------|--------|-------|
+| `UI/Volume` | 204 | 255 |
+| `Stream/Volume` | 204 | 255 |
+| `Timecode` | fresh | fresh |
+| `Connection/Uptime`, `Sysinfo/Timer/OsUptime` | rising | rising |
+| `Sysinfo/Network/*`, `Sysinfo/NetStats/*` | — | fluctuating (live) |
+
+The API value scales with the volume index (21/25 ≈ 80 % → 204/255,
+max → 255). All other fields stayed stable.
+
+**Consequences for the operator API on P610:**
+- The box sends live values and the API returns them 1:1 – there is
+  **no stale/legacy-default layer** in front of the live data.
+- "Looks like old-box defaults" comes from two sources: (1) the
+  `Stream/*` IPTV fields, which are structurally 0 on Android boxes;
+  (2) fields that simply **do not exist in the P610 schema** (e.g.
+  screen resolution) – a change to a non-mapped setting can never
+  appear, no matter how it is changed.
+- Useful support fields that *do* work: `UI/Volume`, `UI/Mute`,
+  `UI/ActiveScreen`, `Sysinfo/Bluetooth/*` (single most-recent
+  device: name, status, battery), Wi-Fi RSSI/PHY, CPU temp/usage,
+  network latency/loss.
+
 ## Power / standby behavior
 
 The box aggressively enters standby when idle, which is relevant for any
