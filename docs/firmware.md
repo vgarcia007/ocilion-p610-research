@@ -286,13 +286,41 @@ Notable observations on this snapshot:
   backend's internal device key (Android ID style), `id/host`
   (`VFRCLIENTSTAT-…`) the backend's stats host – both backend-side.
 
+#### Ethernet vs Wi-Fi: field deltas between two boxes (2026-11-12)
+
+A second P610 (Wi-Fi-attached, `Stb/OEMSerial=OC…21721`,
+`ClientLocalIP=192.168.188.209`, `Sysinfo/Wlan/Mac=20:51:F5:0B:B2:93`)
+was compared against the Ethernet box above. Key deltas:
+
+- **`Sysinfo/Wlan/*` fields appear only when Wi-Fi is active**
+  (13 fields: Status, Mac, Ip, PHYMode, CountryCode, Band,
+  ChannelWidth, ActiveSecurity, Signal, Quality, Frequency, Rx, Tx).
+  On the Wi-Fi-inactive Ethernet box they were entirely absent from the
+  API response.
+- **`Sysinfo/Network/Speed` reflects the active transport:** `1000` on
+  Ethernet (link capability), `130` on Wi-Fi (negotiated PHY rate).
+  `Duplex=full` does not adapt on Wi-Fi (legacy artifact).
+- **`Sysinfo/Memory/RAM/Total` is a constant negative value**
+  (`-441450496`) on both boxes – a build constant, not a live value.
+  `Available` is **inconsistent**: positive (~1.8 GiB) on the Ethernet
+  box but negative (`-2006974464`) on the Wi-Fi box. Only `Used`/`Free`/
+  `Cached` are reliable across both.
+- **`Sysinfo/Network/Jitter` is far higher on Wi-Fi** (175.36 vs 37.5 /
+  15.2 on Ethernet) – expected, but useful for Wi-Fi quality diagnosis.
+- **BT battery is only read when connected:** `BatteryLevel=0` on the
+  Wi-Fi box (last device `Xbox Wireless Controller`, disconnected).
+- **WLAN MAC prefixes match the OEM batch:** both boxes
+  `20:51:F5:xx` (Ethernet box `20:51:F5:15:DF:D8`, Wi-Fi box
+  `20:51:F5:0B:B2:93`).
+
 #### Field guide for operator support (P610 schema)
 
 **Useful (live and trustworthy):**
 - Device: `Stb/Firmware`, `Stb/Version`, `Stb/OEMSerial`
 - Network: `Connection/ClientLocalIP` / `ClientIP`, `Connection/Uptime`,
   `Sysinfo/Network/Latency|PacketLoss|Jitter|RouterLatency`,
-  `Sysinfo/Wlan/*` (signal, band, channel, security), `Sysinfo/NetStats/*`
+  `Sysinfo/Wlan/*` (signal, band, channel, security – **only present
+  when Wi-Fi is the active transport**), `Sysinfo/NetStats/*`
 - Hardware: `Sysinfo/CPU/Temperature`, `Sysinfo/Memory/RAM/Used|Free`
   (not `Total`/`Available`, see bugs below)
 - User-facing: `UI/Volume`, `UI/Mute` (live-verified),
@@ -307,8 +335,10 @@ Notable observations on this snapshot:
 (duplicate of `UI/Volume`), `id/connection`, `id/host`.
 
 **Buggy / misleading – report to Ocilion, do not surface:**
-- `Sysinfo/Memory/RAM/Available` and `Total`: **negative values**
-  (mapping bug; `Used`/`Free`/`Cached` are plausible)
+- `Sysinfo/Memory/RAM/Total`: **constant negative value**
+  (`-441450496` on two boxes – build constant, not live).
+  `Available`: **inconsistent** (positive on one box, negative on the
+  other). `Used`/`Free`/`Cached` are the only reliable fields.
 - `Sysinfo/Timer/LastFactoryResetTime`: always `0` – feature not
   mapped, though highly useful for "was the box reset?" checks
 - `Sysinfo/GPU/Usage`: always `0.00 %`
