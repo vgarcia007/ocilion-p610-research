@@ -95,17 +95,52 @@ Android. This means:
 
 ## Update mechanism
 
-- **Standard Android A/B OTA via `update_engine`** (`init.svc.update_engine =
-  running`), with `ro.build.ab_update=true`. The boot-reason history shows
-  real OTAs: `reboot,ota,...` entries.
-- OTAs are delivered by the **operator** (Ocilion provisioning) and, on a
-  provisioned device, through their backend. Because the box is provisioned,
-  firmware updates arrive via the operator pipeline, not directly from Google.
-- GMS updates: the `gms` partition is part of the OTA (`gmsversion =
-  S_amlogic`), i.e. Google's SafetyNet-style "GMS system update" is folded
-  into the OEM image; the box is not a direct "Google system updater" device.
+### The two layers
+
+- **`update_engine` (A/B engine, `init.svc.update_engine = running`)** – the
+  low-level Android A/B flasher (`ro.build.ab_update=true`, active slot
+  `ro.boot.slot_suffix=_a`). It does the actual slot switching /
+  `reboot,ota,...` (visible in the boot-reason history). It is the
+  *mechanism*, not the decision-maker.
+- **`com.sdt.ota` (operator OTA app, versionName 2.5.1 / vCode 20501)** – the
+  *controller*. This is what the user-facing "Software update" dialog is.
+  Its structure (from `dumpsys package`, read-only):
+  - `BootReceiver` → `BootService` → **`CoreService`** (a foreground
+    service started on `BOOT_COMPLETED`; running as `u0a34`), which holds
+    `INTERNET` + `ACCESS_NETWORK_STATE` and does the backend
+    version-check.
+  - `SysBootupDialog` (`com.skw.ota.update.SysBootDialog`) – the
+    update prompt shown after boot when a new image is available.
+  - `SysLocalStateDialog` (`com.skw.ota.update.SysLocalStateDialog`) – a
+    **local-file update** path (update from a file/USB, not the
+    operator backend).
+  - The check endpoint / target version are **not readable from the
+    shell** (SELinux `privapp_data_file`), so the exact backend URL and
+    "is there a newer build" cannot be inspected via ADB.
+- **`com.sdt.remotecontrolota` (v1.2.3, `com.skyworthdigital.remotecontrolota`)**
+  – a *separate* OTA channel **for the R601 remote** itself. The remote's
+  firmware is updated over the air, independent of the box firmware.
+  (Explains the remote's own `last_active`/firmware version fields.)
+
+### Delivery & policy
+
+- OTAs are delivered by the **operator** (Ocilion provisioning) via the
+  `CoreService` backend. Because the box is provisioned, firmware updates
+  arrive through the operator pipeline, not directly from Google.
+- GMS updates are folded into the OEM image (`gms` partition,
+  `gmsversion = S_amlogic`); the box is **not** a direct "Google system
+  updater" device.
+- Current build on this unit: **`C4.0.7_20260605`** (2026-06-05).
 - There is no user-visible "check for updates" outside the operator flow;
-  Settings shows operator-controlled update UI.
+  Settings shows the operator-controlled `com.sdt.ota` dialog.
+
+> **Relevance for the BT-HID bug report:** whether a *newer* firmware
+> (post-20260605) already fixes the GATT-discovery bug **cannot be
+> determined from the shell** (endpoint + target version are
+> SELinux-protected). The only reliable check is the operator's update
+> dialog / a manual "check for updates" in the Settings UI, or asking
+> Ocilion directly in the ticket. Do **not** trigger an actual OTA
+> without explicit approval.
 
 ## Power / standby behavior
 
