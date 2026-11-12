@@ -95,7 +95,11 @@ gamepad walks right into this bug.
 3. Alternatively, if this is a hardware/firmware limitation –
    **document it** (supported input paths / pairing instructions
    with the remote powered off) in the customer documentation.
-4. We are available for an **ADB repro session** (read-only
+4. **Firmware status:** our unit runs build `C4.0.7_20260605`.
+   Is this GATT-discovery failure known, and is there a newer
+   firmware that already fixes it? If so: how is it rolled out to
+   provisioned devices?
+5. We are available for an **ADB repro session** (read-only
    diagnostics) on the affected unit; full unredacted logs (bond
    events, GATT discovery, ACL lifecycles) can be provided on
    request.

@@ -101,7 +101,11 @@ auf diesen Bug.
 3. Alternativ: falls es eine Hardware-/Firmware-Limitierung ist –
    das **dokumentieren** (Unterstützte Eingabewege / Pairing-Anleitung
    mit ausgeschalteter Fernbedienung) in der Kunden-Dokumentation.
-4. Wir stehen für eine **Repro-Session unter ADB** (read-only
+4. **Firmware-Stand:** Unsere Box läuft auf Build `C4.0.7_20260605`.
+   Ist dieser GATT-Discovery-Fehler bekannt, und gibt es eine
+   neuere Firmware, in der er bereits behoben ist? Falls ja:
+   Wie wird sie an provisionierte Geräte ausgerollt?
+5. Wir stehen für eine **Repro-Session unter ADB** (read-only
    Diagnostik) an dem betroffenen Gerät zur Verfügung; vollständige
    ungekürzte Logs (Bond-Events, GATT-Discovery, ACL-Lebenszyklen)
    können wir auf Anfrage liefern.
