@@ -126,7 +126,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | Document | Contents |
 |----------|----------|
 | [docs/hardware.md](docs/hardware.md) | SoC, CPU, GPU, memory, storage, video/audio codecs, connectivity, display, verified via ADB |
-| [docs/firmware.md](docs/firmware.md) | Build, kernel, partitions, verified boot, security, update mechanism, services |
+| [docs/firmware.md](docs/firmware.md) | Build, kernel, partitions, verified boot, security, update mechanism, services, operator telemetry/provisioning channel |
 | [docs/boot.md](docs/boot.md) | Boot chain (XBL → U-Boot → Android), full partition map, bootloader lock state, flashing/recovery feasibility |
 | [docs/android.md](docs/android.md) | The Android layer: installed components, Ocilion apps, Google services, 32-bit ABI |
 | [docs/debranding.md](docs/debranding.md) | Launcher analysis, what's missing/extra vs. stock, reversible debranding plan, test plan |

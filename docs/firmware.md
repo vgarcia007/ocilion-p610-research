@@ -142,6 +142,92 @@ Android. This means:
 > Ocilion directly in the ticket. Do **not** trigger an actual OTA
 > without explicit approval.
 
+## Operator channel: provisioning & live telemetry
+
+*Analyzed 2026-11-12 via ADB + static APK inspection (read-only).
+The operator backend address is deliberately **not** written into
+this public repo; it was identified via reverse IP lookup and live
+connection observation.*
+
+Does the P610 report device state (network, BT, standby, …) to the
+operator, like the legacy Ocilion boxes do via the operator API?
+**Yes** – over **plain HTTPS (port 443) polling**. There is **no
+TR-069/cWMP agent** and no SNMP on the box.
+
+### The telemetry agent
+
+`com.sdt.ocilion.oemservice` (v2.3, `/system/priv-app/OemService`,
+runs as **system uid 1000**) polls its own state on a ~10–15 s
+cadence and keeps persistent HTTPS connections to the operator's
+management backend (reverse IP lookup: Frankfurt, **AS60169**,
+the komro group's network). Observed collection (logcat,
+`NetworkService` tag):
+
+- **Wi-Fi:** PHY mode, country code, channel, band, channel
+  width, security type, RSSI
+- **Ethernet:** MAC, IP, status
+- **Connectivity:** periodic `ping()` probe
+- **Bluetooth:** every bonded device – MAC, type (e.g.
+  `RemoteControl`), connected state, battery, remote firmware
+  version – plus a GATT re-poll of each bonded device every few
+  seconds
+- **Standby mode:** `getDeviceStandbyMode` on a ~15 s poll
+
+These are **live values, not build defaults** – a customer change
+(power-off timer disabled, a newly bonded gamepad, Wi-Fi channel)
+is visible in the reported data. If the operator API returns
+"legacy-box defaults" for P610 fields, the gap is in the
+API's field mapping for the new model, not in what the box sends.
+
+### The data source: the OEM AIDL API
+
+The OemService APK ships the AIDL interface set
+**`com.skyworthdigital.ocilion.oem_api.*`** – the same family the
+operator tooling uses to read a box:
+
+| Interface | Exposes |
+|-----------|---------|
+| `INetworkService` | Wi-Fi/Ethernet state (as logged above) |
+| `IDeviceInfoService` | device identity/info |
+| `IBluetoothDeviceService` | bonded BT devices, RCU (remote) info |
+| `IStandbyModeService` | standby mode + control |
+| `IDisplayInfoService` | display/HDMI state |
+| `IAudioInfoService` | audio output routing |
+| `IHdmiInfoService` | HDMI/CEC state |
+| `IStorageDeviceService` | storage (incl. device serial, connected status) |
+| `IAppInfoService` | installed apps |
+| `ILedManagerService` | front panel LED |
+| `IDvrHddService` | DVR/HDD |
+| `IOemService` | root interface |
+
+The dex is R8-stripped, so the exact JSON field names are not
+recoverable from strings alone; they correspond to these AIDL
+methods.
+
+### The provisioning side
+
+`com.ocilion.ociserviceapplication` (v1.0.0,
+`/system/priv-app/ociserviceapplication`) is the
+**provisioning/activation app**: a Compose UI with a
+**"Need DL ID" page** (device license ID entry) and a
+`waitForNetworkConnection` state – it performs activation toward
+the same operator backend once online.
+`android.autoinstalls.config.Ocilion.hp4c06`
+(`SdtPlayAutoInstallStub`) is the PAI auto-install stub that
+drives the Play-Store-class app list after provisioning (see
+[android.md](android.md), PAI section).
+
+So the new-generation boxes replace the legacy operator-API
+protocol with **two channels over one HTTPS management backend**:
+(1) one-shot provisioning/activation (ociserviceapplication +
+PAI auto-install), (2) continuous live telemetry (oemservice,
+10–15 s poll).
+
+**Open:** exact endpoint paths / auth scheme (URLs are provisioned
+at activation and stored in SELinux-protected
+`privapp_data_file`), backend retention/sampling, and whether the
+poll rate changes in standby (only the active state was observed).
+
 ## Power / standby behavior
 
 The box aggressively enters standby when idle, which is relevant for any
