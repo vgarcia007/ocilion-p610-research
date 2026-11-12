@@ -258,6 +258,34 @@ max → 255). All other fields stayed stable.
   device: name, status, battery), Wi-Fi RSSI/PHY, CPU temp/usage,
   network latency/loss.
 
+#### Full live cross-validation (2026-11-12)
+
+A complete API snapshot for this box (`Stb/OEMSerial=OC…2374` matching
+`ro.boot.serialno`, `Sysinfo/Ethernet/Mac=AC:…A2:6A` matching the box MAC,
+`ClientLocalIP=192.168.178.30`) was compared field-by-field against live
+ADB values. Every live field matched; the logcat of `oemservice` shows the
+agent reading exactly these values (`DeviceInfoService:
+getDeviceCpuUsage/InputVoltage/AvailableMemory/MacAddress/DateTime`,
+`NetworkService: getNetworkLatency/PacketLoss/Jitter/RouterLatency/
+getEthernetStatus/getWifiStatus`, `BluetoothDeviceManager:
+BluetoothDeviceInfo{…Ocilion BLE, connected:true, battery:0,
+rcuVersion:null}`).
+
+Notable observations on this snapshot:
+- `Stb/Version` / `Stb/VersionCode` (`1.8.0 (26093000)`) are the **UI6
+  launcher version** (`com.ocilion.p6`), not the box firmware –
+  firmware is `Stb/Firmware`. `oemservice` itself is v2.3.
+- `Sysinfo/Network/Speed=1000` + `Duplex=full` reflect the
+  Connectivity-framework link capability (`LinkUpBandwidth>=100000Kbps`
+  in `dumpsys ethernet`), not the negotiated 100 Mbit link on this unit.
+- `Sysinfo/Memory/RAM/Total` was **negative** again in this snapshot
+  while `Available` was plausible (~1.8 GiB) – the `Total` mapping bug
+  persists; `Available` is not always wrong.
+- `Subscriber/*` (Id/WorldId/World=`komro`) is operator-provisioning
+  data, not box telemetry. `Stb/Serial` (`p61acfbc294a26a`) is the
+  backend's internal device key (Android ID style), `id/host`
+  (`VFRCLIENTSTAT-…`) the backend's stats host – both backend-side.
+
 #### Field guide for operator support (P610 schema)
 
 **Useful (live and trustworthy):**
