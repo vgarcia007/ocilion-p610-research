@@ -120,7 +120,7 @@ Controls observed on the device (2026-11-11):
 | `settings secure sleep_timeout` | `10800000` (3 h); `-1` = off | Idle timer before the box goes to standby. UI path: **Einstellungen → Systemeinstellungen → Geräteeinstellungen → "Timer zum Ausschalten"** |
 | `persist.sys.standby.mode` | `1`; `0` = off | Amlogic standby mode, enforced by the vendor daemons (`systemcontrol` / `system_suspend` / `magic_wake_daemon`). Writable via the UI (system privileges) but not by the ADB shell (SELinux) |
 | `persist.sys.hdmi.keep_awake` | `false` | Amlogic keep-awake flag for the HDMI/display path |
-| `settings global stay_on_while_plugged_in` | `0` | standard Android "stay awake while plugged in" (off) |
+| `settings secure stay_on_while_plugged_in` | was `2` (USB) on this AC-powered box → ineffective; now `1` (AC) | standard Android "stay awake while plugged in" bitmask (1=AC, 2=USB, 4=wireless, 8=dock); survives reboot (stored in `/data`) |
 
 To keep the box awake for research sessions (reversible, user-space only):
 
@@ -155,6 +155,45 @@ reboot; the `settings` value is stored in `/data`.)
 > standby automatically, and the ADB-over-Wi-Fi connection stays stable.
 > Note: the UI overrode the ADB-set `sleep_timeout 2147483647` with the
 > cleaner `-1` — both mean "disabled".
+
+### Keep-awake for the headless test box (applied, 2026-11-12)
+
+The P610 in this repo's testing setup runs **headless under a desk**
+(no display), so it must never drop the display into sleep. Two
+mechanisms were identified:
+
+- **Display screen-off timeout** – standard Android
+  (`mScreenOffTimeoutSetting=900000`, 15 min inactivity → display
+  off, box stays up; `standbyMode=sleep` log entries are the
+  *effect* of screen-off, not a separate vendor idle timer – none
+  found; `xt_idletimer` exists but is empty/inactive).
+- **`svc power stayon` / `settings secure stay_on_while_plugged_in`**
+  – "keep awake while plugged in" (bitmask: 1=AC, 2=USB, 4=wireless,
+  8=dock).
+
+**Bug found:** the setting was **`2` (USB)**, but this box is
+**AC-powered** (`dumpsys battery`: AC powered: true, USB powered:
+false) – the stay-on therefore never applied. Fixed with:
+
+```sh
+adb shell svc power stayon ac        # writes settings secure stay_on_while_plugged_in=1
+```
+
+**Status (active, intended permanent):** `stay_on_while_plugged_in=1`
+(AC), runtime `mStayOn=true`. The setting is stored in `/data`
+(`settings secure`), so it **survives reboots**. Combined with the
+UI-disabled idle timers (`sleep_timeout=-1`,
+`persist.sys.standby.mode=0`), the headless box stays fully awake
+indefinitely as long as it is on AC power.
+
+Restore (if ever wanted): `adb shell svc power stayon false`
+(→ `stay_on_while_plugged_in=0`).
+
+Note: a "trigger input every N minutes" keep-awake script was
+considered and rejected as the primary mechanism – it is clunky
+(real input events wake apps) and would not survive reboot without
+a boot autostart, which the locked build does not expose.
+`svc power stayon ac` is the clean, official keep-awake path.
 
 ## Wake / "WOL" capability
 
