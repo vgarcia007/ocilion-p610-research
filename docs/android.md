@@ -137,7 +137,7 @@ updated at `/data` via the normal Play Store / operator update channel
 
 | App | Base APK (read-only partition) | Note |
 |-----|-------------------------------|------|
-| Netflix (`com.netflix.ninja`) | `/product/app/Netflix/Netflix.apk` (~93 MB) | plus a dedicated system service `com.netflix.tokenmanager` (`/system_ext/app/NfxTokenManager`) – Netflix is deeply integrated (token/session offload) |
+| Netflix (`com.netflix.ninja`) | `/product/app/Netflix/Netflix.apk` (~93 MB) | plus a dedicated system service `com.netflix.tokenmanager` (`/system_ext/app/NfxTokenManager`) – this is **Netflix PADI** (Platform Authenticated Device Integration): the certification/token channel, see the section below |
 | Disney+ (`com.disney.disneyplus`) | `/system/priv-app/Disney/Disney.apk` (~39 MB) | **priv-app** → holds elevated privileges |
 | Prime Video (`com.amazon.amazonvideo.livingroom`) | `/system/app/PrimeVideo/PrimeVideo.apk` (~25 MB) | |
 | Play Store (`com.android.vending`) | SYSTEM app | the operator's chosen app channel |
@@ -349,6 +349,55 @@ describes as an adjustable, operator-managed list.
 - **PAI re-assertion:** does an operator OTA actually reinstall Class-1 /
   Class-2 apps that were per-user-uninstalled or disabled? Observe across an
   OTA. (Requires explicit approval to trigger/observe.)
-- What exactly does `com.netflix.tokenmanager` (NfxTokenManager) offload –
-  is it a device-level DRM/session credential store for Netflix
-  certification? (Static APK inspection, read-only.)
+
+### NfxTokenManager: Netflix PADI (Platform Authenticated Device Integration)
+
+*Analyzed 2026-11-12 via `dumpsys package` (read-only), resolving the
+open question above.*
+
+`com.netflix.tokenmanager` (`/system_ext/app/NfxTokenManager`,
+versionName **14**, `targetSdk=34`) is **not** a generic DRM token
+store – it is Netflix's **PADI integration component** on this
+device. Evidence:
+
+- Its queryable intents are the **PADI/MGKID token protocol**:
+  `com.netflix.ninja.intent.action.PADI_TOKEN_REQUEST`,
+  `…MGKID_TOKEN_REQUEST`, `…MGKID_TOKEN_RESPONSE`, plus a
+  `TOKEN_REQUEST`/`TOKEN`/`DET_TOKEN` family (DET = device
+  entitlement/token).
+- The Netflix app (`com.netflix.ninja`, v13.2.2) defines the
+  counterpart permissions **`com.netflix.ninja.permission.MGKID`
+  and `.TOKEN`, both `protectionLevel=signature|privileged`** –
+  i.e. only code signed by Netflix *and* installed in a
+  privileged partition may participate. The two packages form a
+  **signature-privileged IPC pair**: the app asks the system
+  service for token/MGKID (Media Gateway Key ID) responses, the
+  service answers under the privileged identity.
+- Only the `ProfileInstallReceiver`/`InitializationProvider`
+  (AndroidX plumbing) is exported as a component; the token
+  exchange happens via the intent protocol above, not a public
+  Activity/Service/ContentProvider.
+- The Netflix app itself is `SYSTEM + UPDATED_SYSTEM_APP` with a
+  `/data/app` overlay – it is updated like a normal app, but the
+  *base* entitlement chain lives in the system image.
+
+**What this means:**
+
+- **Netflix is "vorzertifiziert" (PAI Class 1) in the strong
+  sense**: PADI is Netflix's device-attestation flow used on
+  certified platforms (set-top boxes, smart TVs). The box proves
+  its entitlement through the privileged system service, not
+  through the app's own storage – which is exactly why Netflix
+  here is not simply "the Play Store APK on Android TV".
+- **Consequence for debranding/removal:** removing
+  `com.netflix.ninja` leaves the `NfxTokenManager` system service
+  behind (and vice versa is the more meaningful direction).
+  Because of the `signature|privileged` permissions, a
+  Play-Store/ADB-installed Netflix *could not* take over the
+  token channel – the certification is bound to the system
+  image. Practical rule: treat the Netflix pair as one
+  system-level unit; per-user removal of the app only, keep the
+  token manager.
+- Combined with Widevine (APEX) this is the full DRM picture:
+  hardware-keyed Widevine L1 + PADI device attestation = why
+  Netflix runs at full certified quality on this box.
