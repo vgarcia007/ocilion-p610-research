@@ -258,6 +258,41 @@ max → 255). All other fields stayed stable.
   device: name, status, battery), Wi-Fi RSSI/PHY, CPU temp/usage,
   network latency/loss.
 
+#### Field guide for operator support (P610 schema)
+
+**Useful (live and trustworthy):**
+- Device: `Stb/Firmware`, `Stb/Version`, `Stb/OEMSerial`
+- Network: `Connection/ClientLocalIP` / `ClientIP`, `Connection/Uptime`,
+  `Sysinfo/Network/Latency|PacketLoss|Jitter|RouterLatency`,
+  `Sysinfo/Wlan/*` (signal, band, channel, security), `Sysinfo/NetStats/*`
+- Hardware: `Sysinfo/CPU/Temperature`, `Sysinfo/Memory/RAM/Used|Free`
+  (not `Total`/`Available`, see bugs below)
+- User-facing: `UI/Volume`, `UI/Mute` (live-verified),
+  `UI/ActiveScreen` (which screen/app the customer is on)
+- BT: `Sysinfo/Bluetooth/*` – but only **one** device is reported
+  (the most recent/active one), not the full bond list
+- `Timecode` (snapshot freshness), `Sysinfo/Timer/DeviceTimestamp`
+
+**Legacy – hide in support UI (IPTV-only, always dead on Android boxes):**
+`Stream/Timecode` (shows 1970 garbage), `Stream/Bandwidth`, `Stream/Rx*`,
+`Stream/Pause`, `Stream/Mute` (use `UI/Mute`), `Stream/Volume`
+(duplicate of `UI/Volume`), `id/connection`, `id/host`.
+
+**Buggy / misleading – report to Ocilion, do not surface:**
+- `Sysinfo/Memory/RAM/Available` and `Total`: **negative values**
+  (mapping bug; `Used`/`Free`/`Cached` are plausible)
+- `Sysinfo/Timer/LastFactoryResetTime`: always `0` – feature not
+  mapped, though highly useful for "was the box reset?" checks
+- `Sysinfo/GPU/Usage`: always `0.00 %`
+- `Connection/Inactive`: counts 1:1 in real time but did **not**
+  reset after volume key events – semantics unclear
+
+**Deliberately absent from the P610 schema** (changes to these can
+never appear in the API): screen resolution, HDMI status. The
+`com.skyworthdigital.ocilion.oem_api.*` AIDL set on the box includes
+`IDisplayInfoService` and `IHdmiInfoService`, so the data is
+collectable – the backend simply does not expose it.
+
 ## Power / standby behavior
 
 The box aggressively enters standby when idle, which is relevant for any
