@@ -86,6 +86,44 @@ Default mapping: **Netflix button (`com.netflix.ninja`) →
 The package name (e.g. `de.pi.p610.keyremap`) can stay as is; it
 does not matter.
 
+### 2a. Remapping several buttons at once (YouTube + Prime example)
+
+The `MAP` array is just a list of pairs – add as many as you want.
+Example: **all three of Netflix, YouTube and Prime → Jellyfin**:
+
+```java
+// KeyRemapAccessibilityService.java
+private static final String[][] MAP = {
+    { "com.netflix.ninja",                    "org.jellyfin.androidtv" },
+    { "com.google.android.youtube.tv",        "org.jellyfin.androidtv" },
+    { "com.amazon.amazonvideo.livingroom",    "org.jellyfin.androidtv" },
+};
+```
+
+and in `AndroidManifest.xml`:
+
+```xml
+<queries>
+    <package android:name="org.jellyfin.androidtv"/>
+    <package android:name="com.netflix.ninja"/>
+    <package android:name="com.google.android.youtube.tv"/>
+    <package android:name="com.amazon.amazonvideo.livingroom"/>
+</queries>
+```
+
+Notes for the multi-button case (all already handled by the code):
+
+- The toggle logic works per pair: pressing *any* of the remapped
+  buttons while inside the target app goes Home.
+- The 3 s debounce is global, which is correct here (you cannot
+  meaningfully press two shortcut buttons within 3 s).
+- Each trigger app must individually be installed/enabled/launchable
+  on the box – a missing one just never fires (no error, the button
+  does its stock nothing).
+- Every remapped button still shows its original app for one frame
+  (YouTube/Prime flash, not just Netflix).
+- No other code changes are needed – rebuild exactly as in §3.
+
 ## 3. Build
 
 From the directory containing `AndroidManifest.xml`, `src/`-equivalent
