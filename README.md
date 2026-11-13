@@ -133,7 +133,8 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
 | [docs/bug-reports/](docs/bug-reports/) | BT gamepad GATT bug: root cause, verified workaround, vendor report, ready-to-send tickets; plus the keep-awake default improvement suggestion |
-| [docs/remote.md](docs/remote.md) | R601 remote: hardware, box-side software stack, observed behavior, GATT-bug context, button-remapping investigation plan |
+| [docs/remote.md](docs/remote.md) | R601 remote: hardware, box-side software stack, observed behavior, GATT-bug context, button-remapping investigation (§5a: working solution) |
+| [docs/remote-button-remap-guide.md](docs/remote-button-remap-guide.md) | **How-to:** reproduce the special-button remap (Netflix → Jellyfin) on another box – build, install, enable, test, undo |
 | [docs/operators.md](docs/operators.md) | Known operators/providers deploying the P610 (evidence-graded) |
 | [docs/rooting.md](docs/rooting.md) | Rooting: current state, realistic paths, watch list |
 | [docs/links.md](docs/links.md) | Official sources, datasheets, and related projects |
@@ -150,8 +151,11 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 
 ## Safety / constraints of this research
 
-- Only **read-only ADB commands** were used against the device so far.
-- Nothing has been flashed, rooted, unlocked, reset, or modified.
+- Research steps use **read-only ADB commands**. The one intentional,
+  user-approved exception is the R601 button remap (Netflix →
+  Jellyfin), which is fully reversible and documented:
+  [docs/remote-button-remap-guide.md](docs/remote-button-remap-guide.md).
+- Nothing has been flashed, rooted, or unlocked. No factory reset.
 - No serial numbers, MAC addresses, tokens, credentials, or operator-internal
   URLs are published in this repository. Device-specific identifiers collected
   during research were stripped before documentation.

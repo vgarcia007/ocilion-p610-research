@@ -168,11 +168,15 @@ adb logcat -v time | grep SdtGlobalKey
 # press YouTube -> "keyCode: 266" ... "GlobalButtonLaunch pkg: com.google.android.youtube.tv"
 ```
 
-> **Note on the Netflix button:** on this unit `com.netflix.ninja` is
-> per-user *disabled*, so `launchNetflix` logs
-> `Cannot find intent for Netlix package: com.netflix.ninja` and does
-> nothing. The button's *logic* is intact; it only fails because the
-> target app is not launchable. *(observed 2026-11-13)*
+> **Note on the Netflix button:** `com.netflix.ninja` had been
+> per-user *disabled* on this unit, so `launchNetflix` logged
+> `Cannot find intent for Netlix package: com.netflix.ninja` and did
+> nothing – the button's *logic* is intact, it only fails when the
+> target app is not launchable. *(observed 2026-11-13)* The app was
+> re-enabled on 2026-11-13 as a prerequisite for the §5a remap (the
+> system has to launch it for the hijack to work); additionally the
+> incompatible Android-16 `/data` update of the app had to be removed
+> (`pm uninstall com.netflix.ninja`, see §5a).
 
 ## 4. What the remote does today (observed behavior)
 
@@ -221,8 +225,9 @@ existing shell-level ADB access.
 
 ### Where a remapping could live – resolved 2026-11-13
 
-**Category A (app shortcut row) – mapped, and NOT user-remappable
-(proven by experiment 2026-11-13):**
+**Category A (app shortcut row) – mapped; the key event is NOT
+user-catchable (proven by experiment 2026-11-13), but the system
+launch IS hijackable without root (§5a, working solution):**
 `com.sdt.globalkey.GlobalKeyReceiver` (decompiled from
 `/system/priv-app/SdtGlobalKeyHandler/SdtGlobalKeyHandler.apk`, 2
 classes) contains a **hardcoded** keyCode→launch-method table,
@@ -325,6 +330,11 @@ adb uninstall de.pi.p610.keyremap
 **Status on this box (2026-11-13):** installed and enabled –
 **Netflix button → Jellyfin, verified with 1 press from cold start.**
 
+> **To reproduce this on another box / button:** the complete
+> step-by-step (download build tools → adapt mapping → build →
+> install → enable → test → undo → troubleshooting) is in
+> [remote-button-remap-guide.md](remote-button-remap-guide.md).
+
 **Remaining limitation:** while the service runs, the *real*
 Netflix window is never left alone for more than one frame, so
 Netflix itself is effectively unreachable via its button (the app can
@@ -349,7 +359,13 @@ user-accessible.
 
 ## 6. Completed investigation steps (2026-11-13)
 
-All steps were read-only ADB; nothing on the device was modified.
+Steps 1–4 were read-only ADB. The remap implementation (§5a) did
+make changes to this unit, **all reversible and documented**:
+installed `de.pi.p610.keyremap`, enabled its accessibility service
+via `settings secure`, enabled `com.netflix.ninja` per-user (it had
+been disabled), and removed the incompatible Netflix `/data` update
+(`pm uninstall com.netflix.ninja` → `/product` 11.0.12). Undo is a
+single undo block (§5a / the how-to guide).
 
 1. **Input device & keycodes – DONE.** `dumpsys input`: the R601 is
    "Ocilion BLE Keyboard" (`/dev/input/event10`, uhid, vendor 0x119b).
