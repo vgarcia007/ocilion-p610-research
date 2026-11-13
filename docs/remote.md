@@ -18,7 +18,7 @@ documents; *(expected)* = platform-standard, not yet observed.
 | Transport | **BLE** (Bluetooth LE), Google-TV-style remote | *(verified)* – bond type `[LE]`, `transport:BT_TRANSPORT_LE` |
 | BT version | box adapter is BT 5.2 (Realtek combo, `cqhci` driver) | *(verified)* |
 | Voice Control | **Google Voice Control** button | *(datasheet)* – function on this box untested (see open questions) |
-| Shortcut keys | **per-app shortcut keys** (the Google TV row of app buttons) | *(datasheet)* – mapping on this box untested (see §5) |
+| Shortcut keys | **per-app shortcut keys** (the Google TV row of app buttons) | *(datasheet)* – mapping verified (see §3b) |
 | Power | 2× AAA | *(datasheet)* |
 
 - Official datasheet (P610 + R601, contains the button overview):
@@ -75,7 +75,106 @@ powered off. Full docs:
 This also means: the R601 **must keep working in any scenario** – it is
 the box's primary (and only guaranteed BT) input device.
 
-## 3. What the remote does today (observed behavior)
+## 3. Verified button → keycode → action map (2026-11-13)
+
+**Method:** the R601 presents as a **BLE HID keyboard** (uhid,
+vendor `0x119b`, product `0x21d0`, shown as "Ocilion BLE Keyboard",
+`/dev/input/event10`). Its keymap is
+`/vendor/usr/keylayout/Vendor_119b_Product_21d0.kl` *(verified)*. Raw
+button presses were captured with `getevent -l`; app reactions with
+`logcat` (tag `SdtGlobalKey`). HID usages (`MSC_SCAN 0x0c:xxxx`) are
+the Consumer Page button codes.
+
+### 3a. The two categories
+
+This is the key architectural finding for remapping:
+
+| Category | Buttons | Path | Who acts | Remappable? |
+|----------|---------|------|----------|-------------|
+| **A – "Global buttons"** | Netflix, YouTube, Prime Video, TV-Guide, TV, Apps (Home-row), Settings, RCU-pair, Reset | keycode → broadcast `android.intent.action.GLOBAL_BUTTON` → 4 receivers (`sdt.globalkey`, `tv.settings`, `droidlogic`, `sdt.vendor`) | `com.sdt.globalkey.GlobalKeyReceiver` has a **hardcoded** keyCode→app table | ❌ needs root / OTA (privileged `/system/priv-app`) |
+| **B – "Color buttons"** | **Red, Green, Yellow, Blue** | standard Android input event, **not** intercepted by any receiver | delivered to the **foreground app** | ✅ **yes** – any app / accessibility service can catch them |
+
+**Why B is the remap target:** the color keys emit plain
+`KEY_RED/GREEN/YELLOW/BLUE` keycodes on the shared input device,
+produce **no** `SdtGlobalKey` log line, and reach the top app. UI6
+answers them with *"Diese Funktion ist derzeit nicht verfügbar"*
+(feature not available) because it does not implement them. Since they
+flow through the normal Android input pipeline, a user-installed app or
+accessibility service can intercept `KEYCODE_RED…BLUE` (398–401) and
+reassign them – **no root, reversible**.
+
+### 3b. Full table (verified where marked)
+
+"Keymap source" is exactly what `Vendor_119b_Product_21d0.kl` maps the
+button from: either a HID Consumer-Page usage (`usage 0x0c:xxxx`, what
+`getevent` shows as `MSC_SCAN`) or a raw kernel keycode (`key N`).
+
+"Keymap source" is exactly what `Vendor_119b_Product_21d0.kl` maps
+from: either a HID Consumer-Page usage (`usage 0x0c:xxxx`, what
+`getevent` shows as `MSC_SCAN`) or a raw kernel keycode (`key N`).
+"Android keycode" is what the receiver/app receives afterwards.
+
+| Physical button | Keymap source (raw) | Android keycode | Category | Action on this box |
+|-----------------|---------------------|-----------------|----------|--------------------|
+| **Netflix** | `usage 0x0c:0x78` (STEM_1) | **265** | A | `launchNetflix` → `com.netflix.ninja` *(verified live)* |
+| **YouTube** | `usage 0x0c:0x77` (STEM_2) | **266** | A | `launchYoutube` → `com.google.android.youtube.tv` *(verified live: launched)* |
+| **Prime Video** | `key 230` (F8) | **138** | A | `launchPrimeVideo` → `com.amazon.amazonvideo.livingroom` *(verified live)* |
+| **TV-Guide** | `key 422` (STEM_3) | **267** | A | `launchOcilionTvGuide` → `com.ocilion.p6` *(verified live)* |
+| **TV** | `key 377` (TV) | **170** | A | `launchOcilionTV` → `com.ocilion.p6` "tv" *(receiver match 0xaa)* |
+| **Apps / Home-row** | `key 580` (ALL_APPS) | **284** (ALL_APPS) | A | `launchOcilionApps` → `com.ocilion.p6` "apps" *(receiver match 0x11c)* |
+| **Settings** | `key 384` (SETTINGS) | **176** | A | `launchTvSettings` → `com.android.tv.settings` *(receiver match 0xb0)* |
+| **RCU pair / Assist** | `key 63` (F5) | **135** (F5) | A | `handleRcuPairButton` (re-pair the remote) *(receiver match 0x87)* |
+| **Reset** | (not in keymap) | **201** | A | `handleResetButton` – long-press = factory-reset flow *(receiver match 0xc9)* |
+| **Red** | `key 0x18e` (MSC_SCAN `0x0c0069`) | **398** (KEY_RED) | **B** | → foreground app; UI6: "nicht verfügbar" *(verified raw)* |
+| **Green** | `key 0x18f` (`0x0c006a`) | **399** (KEY_GREEN) | **B** | → foreground app *(verified raw)* |
+| **Yellow** | `key 0x190` (`0x0c006c`) | **400** (KEY_YELLOW) | **B** | → foreground app *(verified raw)* |
+| **Blue** | `key 0x191` (`0x0c006b`) | **401** (KEY_BLUE) | **B** | → foreground app *(verified raw)* |
+| Power | `key 116` | 116 (KEY_POWER) | – | standby/wake |
+| OK / D-pad | `key 353` / `103,105,106,108` | 23 / 19,21,22,20 (CENTER/UP/LEFT/RIGHT/DOWN) | – | navigation |
+| Volume +/− / Mute | `key 115/114/113` | 115/114/113 | – | audio |
+| Back / Home | `key 158` / `key 172` | 158 (BACK) / 3 (HOME) | – | navigation |
+| Channel up/down | `key 402` / `key 403` | 166 / 167 | – | (no receiver handler) |
+| Media play/rew/ff | `key 164/168/208` | 164/168/208 | – | transport |
+
+Notes on the receiver matches: the `sdt.globalkey` switch (from the
+decompiled smali) compares exactly these values: `0xc9`=201 reset,
+`0x87`=135 pair, `0x86`=134 → `launchGooglePlayOrDisney`, `0x88`=136
+→ `launchDisneyPlus`, `0x8a`=138 → Prime, `0xaa`=170 → TV,
+`0xb0`=176 → Settings, `0x11c`=284 → Apps, packed-switch 265/266/267
+→ Netflix/YouTube/TV-Guide. The 134/136 (F4/F6) entries have **no
+matching button in the current keymap** – legacy/vestigial. Rows
+marked only "receiver match" (TV, Apps, Settings, RCU-pair, Reset)
+were not individually pressed in the live capture, but the keymap
+symbol → Android keycode mapping is standard AOSP.
+
+> **Reading note for remapping:** the app-shortcut row reaches the
+> system as Android **keycodes 265/266/138/267** (intercepted at
+> broadcast level, §5). The color keys reach apps as **keycodes
+> 398–401** (`KEYCODE_RED/GREEN/YELLOW/BLUE`) – the §3a category-B
+> finding.
+
+**Repro for the raw capture:**
+
+```sh
+adb shell getevent -l          # watch /dev/input/event10 lines
+# press Red/Green/Yellow/Blue -> KEY_RED/GREEN/YELLOW/BLUE appear
+```
+
+**Repro for the app reaction (category A):**
+
+```sh
+adb logcat -v time | grep SdtGlobalKey
+# press Netflix -> "onReceive:keyAction<1> keyCode: 265"
+# press YouTube -> "keyCode: 266" ... "GlobalButtonLaunch pkg: com.google.android.youtube.tv"
+```
+
+> **Note on the Netflix button:** on this unit `com.netflix.ninja` is
+> per-user *disabled*, so `launchNetflix` logs
+> `Cannot find intent for Netlix package: com.netflix.ninja` and does
+> nothing. The button's *logic* is intact; it only fails because the
+> target app is not launchable. *(observed 2026-11-13)*
+
+## 4. What the remote does today (observed behavior)
 
 - Navigates UI6 / any Android TV app: D-pad, OK, back, home, volume,
   power, mute. *(verified)*
@@ -87,17 +186,24 @@ the box's primary (and only guaranteed BT) input device.
 - Power button: box enters standby after the inactivity timeout and
   the remote wakes it instantly. *(verified behaviorally)*
 
-**Not yet observed / untested:**
+**Verified 2026-11-13 (see §3):**
 
-- The **per-app shortcut keys** (Google TV app-button row) – which apps
-  they map to on *this* provisioning, and whether the mapping is
-  configurable. (Open, §5.)
+- The app-shortcut row launches Netflix/YouTube/Prime Video/TV-Guide
+  (hardcoded in `com.sdt.globalkey`; the Netflix target fails while
+  `com.netflix.ninja` is per-user disabled).
+- The four **color keys** reach the foreground app as `KEY_RED/GREEN/
+  YELLOW/BLUE`; UI6 answers them with "feature not available" on the
+  home screen.
+
+**Still untested:**
+
 - The **Google Voice Control button** – voice control needs a Google
   account; untested (open question from [debranding.md](debranding.md)).
-- Which of the 39 buttons are actually used on the P610 firmware vs.
-  mapped to no-ops. (Open, §5.)
+- Which of the remaining buttons (number pad, channel up/down, media
+  keys, TV button) do something beyond the standard Android mapping.
+  (Open, §7.)
 
-## 4. Button remapping: goal & constraints
+## 5. Button remapping: goal & constraints
 
 **Goal:** find out whether individual R601 buttons can be
 reassigned (e.g. turn an app shortcut into "open app X", or make a
@@ -113,91 +219,89 @@ existing shell-level ADB access.
   bad for a customer-visible box.
 - Reversible: anything we change must have a documented undo.
 
-### Where a remapping could live (hypotheses, ordered by likelihood)
+### Where a remapping could live – resolved 2026-11-13
 
-1. **`com.sdt.globalkey`** – "Global key handling (shortcut keys on
-   the remote)". Most likely home of the button→action mapping.
-   Check: does it expose `android.provider.Settings` entries,
-   `SharedPreferences`, or a settings Activity we can read/change?
-2. **`com.ruwido.atv_ir` / `com.ruwido.rci_service`** – the remote
-   companion may carry the per-app shortcut configuration (ruwido
-   remotes are configurable remotes by design). Check its data dir and
-   settings surface.
-3. **Android keylayout layer** – the R601 arrives as a standard HID
-   input device; the base keycode map may live in
-   `/system/usr/keylayout/*.kl`. If the special buttons show up as
-   generic keycodes (e.g. `KEYCODE_BUTTON_*`), a *user*-level
-   interception (accessibility service, input interceptor app from
-   Play Store) could remap them without touching system files.
-4. **Google TV `AtvRemoteService`** – the stock remote-service
-   component handles shortcut keys on Google TV; on this box it may be
-   shadowed by `com.sdt.globalkey` instead.
-5. **Remote firmware itself** – last resort: the R601 firmware (OTA'd
-   by the operator) defines what the buttons *send*. Not user-
-   accessible.
+**Category A (app shortcut row) – mapped, but NOT user-remappable:**
+`com.sdt.globalkey.GlobalKeyReceiver` (decompiled from
+`/system/priv-app/SdtGlobalKeyHandler/SdtGlobalKeyHandler.apk`, 2
+classes) contains a **hardcoded** keyCode→launch-method table,
+compiled into a privileged `/system/priv-app`. There is **no**
+`settings` / SharedPreferences configuration surface for it
+(verified: no related `settings global/system/secure` entries exist on
+the device). Changing a Netflix/YouTube/Prime/TV-Guide target
+therefore requires writing to `/system` → root or a new operator
+firmware. (The receiver also has a `getGtvLaunchIntent` path that
+forwards an arbitrary `launchPackageName` via the stock Google TV
+`com.google.global_button.ACTION_LAUNCH_APP` action – but the R601
+buttons on this firmware hit the hardcoded table first, not that path.)
 
-## 5. Investigation plan (read-only first)
+**Category B (color buttons) – remappable without root:**
+the four color keys are plain input events (see §3a) with no system
+handler. Remap options, ordered by preference:
+1. **In-app handling** – the foreground app *is* the handler. Apps
+   that implement `KEYCODE_RED/GREEN/YELLOW/BLUE` (398–401) just work;
+   UI6 currently answers "not available".
+2. **Accessibility-service interceptor** (user-level app from Play
+   Store or sideloaded, `armeabi-v7a`): remaps the key events
+   per-app. No system partition touched, uninstall = revert.
+3. **Custom launcher** (relevant if we swap UI6, see
+   [debranding.md](debranding.md)): our own home app could define what
+   the four colors do on the home screen.
 
-All steps are read-only ADB; nothing is changed until a mapping
-surface is confirmed *and* a safe reversible path exists.
+**Not a viable layer:** the remote firmware (OTA'd by the operator via
+`com.sdt.remotecontrolota`) defines the *raw* HID usages – not
+user-accessible.
 
-**Step 0 – Identify the input device & keycodes (5 min):**
+## 6. Completed investigation steps (2026-11-13)
 
-```sh
-adb shell dumpsys input | grep -A6 -i "remote\|ruwido\|r601"
-adb shell input getevents -l      # then press each special button
-```
+All steps were read-only ADB; nothing on the device was modified.
 
-→ Map: which of the 39 buttons the box even sees as input events, and
-with which keycodes. Buttons that produce no event at all are handled
-out-of-band (e.g. direct GATT notifications to `com.ruwido.rci_service`)
-and cannot be remapped at the input layer.
+1. **Input device & keycodes – DONE.** `dumpsys input`: the R601 is
+   "Ocilion BLE Keyboard" (`/dev/input/event10`, uhid, vendor 0x119b).
+   `getevent -l` + `Vendor_119b_Product_21d0.kl` give the full
+   button→keycode table (see §3b).
+2. **Who reacts – DONE.** `logcat` (tag `SdtGlobalKey`) proves the
+   GLOBAL_BUTTON path for the app-shortcut row (keyCode 265/266/138/
+   267 observed live). The color keys produce **no** receiver log
+   lines → window-app delivery (verified).
+3. **`com.sdt.globalkey` decompiled – DONE.** 2 smali classes;
+   complete keyCode→action table extracted; no config surface.
+4. **Color-key capture – DONE.** Raw `getevent` shows
+   `KEY_RED/GREEN/YELLOW/BLUE` (HID usages 0x0c0069/6a/6c/6b) on
+   event10 – the §3a category-B finding.
 
-**Step 1 – Watch who reacts (10 min):**
+**Remaining open items** are in §7.
 
-```sh
-adb shell logcat -v time | grep -iE "globalkey|ruwido|rci|shortcut|keyevent"
-```
+## 7. Open questions
 
-→ Press each special button; note which component logs a reaction.
+**Answered 2026-11-13** (kept for reference):
+- *Which apps do the shortcut keys map to?* Hardcoded in
+  `com.sdt.globalkey` (Netflix/YouTube/Prime/TV-Guide/UI6 variants),
+  not per-remote configurable – same for all boxes on this firmware
+  (see §3b/§5).
+- *Is the mapping configurable via `settings`/UI?* No – no
+  configuration surface exists (see §5).
 
-**Step 2 – Inspect `com.sdt.globalkey` (20 min):**
-
-```sh
-adb shell dumpsys package com.sdt.globalkey
-adb shell run-as com.sdt.globalkey 2>&1 | head -1   # expect "not allowed" (system app)
-adb shell pm dump com.sdt.globalkey | grep -iE "permission|receiver|service"
-```
-
-→ Extract the APK (`pm path` + `adb pull`) and decompile locally
-(offline): look for key→action tables, settings screens, config files.
-APK stays out of this public repo (proprietary firmware material).
-
-**Step 3 – Inspect `com.ruwido.*` (20 min):** same approach – APK
-inspection + `dumpsys package` + any `settings put`-style keys in the
-dex.
-
-**Step 4 – Test a user-level interceptor (if steps 0–3 find a plain
-keycode):** with the base keycodes known, evaluate an accessibility
-service / input-remapping app (Play Store, `armeabi-v7a`) that can
-reassign `KEYCODE_*` per-app. This is the most likely *clean* answer
-to "can we remap buttons" – no root, reversible, survives firmware
-updates only while the app is installed.
-
-**Step 5 – Decide & document:** whichever path works (or the
-conclusion "not possible without root / remote firmware change"),
-document it here with reproducible commands.
-
-## 6. Open questions
-
-- Which apps do the per-app shortcut keys map to on this (komro)
-  provisioning, and is the mapping per-operator or per-remote?
+**Still open:**
 - Does the Google Voice Control button do anything useful without a
-  Google account?
-- Is the `com.sdt.globalkey` mapping configurable via a
-  `settings put` / Settings UI entry? (Step 2 answers this.)
-- Do any of the 39 buttons have no in-box function at all (e.g.
-  buttons meant for TV-input/TV-radio that don't exist on the P610)?
+  Google account? (The `virtual-remote` input device has `HasMic:
+  true`; the physical voice key's keycode is not in the keymap yet –
+  capture it via `getevent`.)
+- What does the **TV** button (keyCode 377 / TV_INPUT, `#Access`
+  comment in the legacy keymap) do on this firmware? Not in the
+  `sdt.globalkey` table – likely window-app or droidlogic/vendor
+  receiver.
+- What consumes the color keys in the **Ocilion TV app** (UI6
+  playback screens)? The "feature not available" toast on the home
+  screen suggests some screens *do* implement them (operator-TV
+  convention: red=menu, green=info/EPG, yellow=subtitle, blue=
+  recording/extra) – verify in UI6 live-TV playback.
+- Are the `com.droidlogic` / `com.sdt.vendor` GLOBAL_BUTTON receivers
+  no-ops on this firmware or do they handle any key? (Decompile the
+  two APKs, offline.)
 - Does the remote OTA (`com.sdt.remotecontrolota`) ever change button
   behavior in a newer remote firmware? (Unobservable from the box –
   only the operator knows.)
+- Which of the remaining 39 buttons (number pad, info, channel
+  up/down, media keys) do something beyond the standard Android
+  mapping? (Cheap to check with the same `getevent` + logcat method.)
