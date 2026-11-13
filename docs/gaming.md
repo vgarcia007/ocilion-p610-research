@@ -278,6 +278,46 @@ bit low for 4K60 high-bitrate HEVC; Wi-Fi 6 on 5 GHz at 866 Mbps PHY is the
 better path here), a gamepad, and a host (PC with Sunshine, or an
 NVIDIA/Steam machine).
 
+### Steam Link on the P610 – working configuration (GTA V, 2026-11-13)
+
+App settings files are **not readable** unrooted (package not debuggable, no
+`run-as`), so this is the *effective* configuration as applied in the app UI,
+verified against live codec metrics (`dumpsys media.metrics`).
+
+**Working setup – "runs really well" (user-verified, GTA V):**
+
+| Setting | Value |
+|---|---|
+| Codec | **AV1** (HW-decoded: `c2.amlogic.av1.decoder`, 1920x1080) |
+| Frame rate | **60 fps** |
+| Video quality | **Max** |
+| Network | **capped at 50 Mbit** |
+| Minimum latency | **On** |
+| Network path | Wi-Fi 5 GHz (5180 MHz, RSSI ~-41 dBm, 866 Mbps PHY) |
+
+**What did NOT work (measured, same box/host, HEVC default):**
+
+- **HEVC (H.265) 1080p60, default bitrate:** decoder saturated –
+  `c2.amlogic.hevc.decoder` reported **24–36 % frame drops**, freeze rate
+  up to ~40 %; sustained load > 4 caused a **system-wide UI freeze**
+  (black screen, only ADB alive) requiring a full `adb reboot`.
+  1080p30 made it *worse* (still ~30 % drops) – the pipeline, not the fps
+  cap, was the bottleneck.
+- **AV1 1080p60 *uncapped* bitrate:** still 36–54 % drops, freeze rate
+  ~54–59 %. The 50 Mbit cap is what made the difference: AV1's compression
+  keeps the stream below the point where the S905X5M decode/composite
+  pipeline saturates.
+- Cross-check: a **Fire TV Stick on the same Wi-Fi** streamed the same
+  host fine at lower throughput – the link was never the bottleneck.
+
+**Takeaway for this box:** cap the bitrate (~50 Mbit) and prefer AV1 –
+the S905X5M handles AV1 1080p60 at bounded bitrate well, but HEVC (and
+AV1 at unbounded game-bitrates) drops frames or freezes the UI.
+
+In-game exit without ADB: **Xbox guide button** on the gamepad opens the
+stream pause menu → back to the app; Home key on the remote returns to
+the Android home screen.
+
 ## Native Steam / Windows-on-ARM (compatibility layers)
 
 Projects like **Winlator**, **Mobox**, **ExaGear** (legacy) run x86/x86_64
