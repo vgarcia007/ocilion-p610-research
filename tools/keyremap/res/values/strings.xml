@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="svc_desc">P610 Key Remap: remappt die Netflix-Taste der R601 auf Jellyfin. Keine Bedienung nötig; der Dienst registriert nur einen Button-Empfänger.</string>
+</resources>

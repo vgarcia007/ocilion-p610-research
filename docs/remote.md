@@ -221,19 +221,49 @@ existing shell-level ADB access.
 
 ### Where a remapping could live – resolved 2026-11-13
 
-**Category A (app shortcut row) – mapped, but NOT user-remappable:**
+**Category A (app shortcut row) – mapped, and NOT user-remappable
+(proven by experiment 2026-11-13):**
 `com.sdt.globalkey.GlobalKeyReceiver` (decompiled from
 `/system/priv-app/SdtGlobalKeyHandler/SdtGlobalKeyHandler.apk`, 2
 classes) contains a **hardcoded** keyCode→launch-method table,
 compiled into a privileged `/system/priv-app`. There is **no**
 `settings` / SharedPreferences configuration surface for it
 (verified: no related `settings global/system/secure` entries exist on
-the device). Changing a Netflix/YouTube/Prime/TV-Guide target
-therefore requires writing to `/system` → root or a new operator
-firmware. (The receiver also has a `getGtvLaunchIntent` path that
-forwards an arbitrary `launchPackageName` via the stock Google TV
-`com.google.global_button.ACTION_LAUNCH_APP` action – but the R601
-buttons on this firmware hit the hardcoded table first, not that path.)
+the device).
+
+The interception is fully system-level, proven three ways:
+
+1. **Accessibility apps do not see the key.** "Button Mapper – TV
+   Quick Actions" (Play Store, accessibility-based remapper) detects
+   the four color keys but **not** the Netflix/YouTube/Prime/TV-Guide
+   keys *(tested on this box)*.
+2. **Custom broadcast receiver: blocked.** `GLOBAL_BUTTON` is a
+   protected broadcast (AOSP `core/res/AndroidManifest.xml`) that any
+   app can *declare* a receiver for, but the sender attaches
+   `com.google.android.permission.GLOBAL_BUTTON` as receiver
+   permission. That permission is **not even defined on the device**
+   (absent from `dumpsys package` permission table); AOSP grants
+   undefined permissions only to `SYSTEM_UID` (1000) – all five
+   registered receivers (`sdt.globalkey`, `tv.settings`, `droidlogic`,
+   `sdt.vendor`, + test app) are system apps, our test app
+   (uid 10120) is registered in the resolver table but **never
+   invoked** *(proven: APK with manifest receiver, declared
+   permission, app de-stopped – zero deliveries)*.
+3. **Accessibility `onKeyEvent` / `onAccessibilityEvent`: also empty**
+   (custom service with `flagRequestFilterKeyEvents` +
+   `canRetrieveWindowContent` – no events for keyCode 265) *(proven)*.
+
+   i.e. the key event is consumed at InputDispatcher level and only
+   re-emitted as the permission-filtered broadcast. No user-space
+   layer sees it.
+
+**Conclusion:** changing a Netflix/YouTube/Prime/TV-Guide target
+requires writing to `/system` → **root or a new operator firmware**.
+A ready-made remap app skeleton (broadcast receiver + accessibility
+service) is in `tools/keyremap/` in this repo – it is the
+implementation to use if a rooted path ever materializes (see
+[rooting.md](rooting.md)); on the current box it is a no-op for
+category A.
 
 **Category B (color buttons) – remappable without root:**
 the four color keys are plain input events (see §3a) with no system
@@ -281,6 +311,12 @@ All steps were read-only ADB; nothing on the device was modified.
   (see §3b/§5).
 - *Is the mapping configurable via `settings`/UI?* No – no
   configuration surface exists (see §5).
+- *Can the Netflix/YouTube/… buttons be remapped to other apps
+  (e.g. Jellyfin) without root?* **No** – proven by experiment
+  (custom broadcast receiver + accessibility service both blocked,
+  Button Mapper from Play Store does not see the keys). Requires
+  root/OTA. See §5 and [../tools/keyremap/](../tools/keyremap/) for
+  the ready implementation to use once rooted.
 
 **Still open:**
 - Does the Google Voice Control button do anything useful without a
