@@ -91,7 +91,7 @@ This is the key architectural finding for remapping:
 
 | Category | Buttons | Path | Who acts | Remappable? |
 |----------|---------|------|----------|-------------|
-| **A – "Global buttons"** | Netflix, YouTube, Prime Video, TV-Guide, TV, Apps (Home-row), Settings, RCU-pair, Reset | keycode → broadcast `android.intent.action.GLOBAL_BUTTON` → 4 receivers (`sdt.globalkey`, `tv.settings`, `droidlogic`, `sdt.vendor`) | `com.sdt.globalkey.GlobalKeyReceiver` has a **hardcoded** keyCode→app table | ❌ needs root / OTA (privileged `/system/priv-app`) |
+| **A – "Global buttons"** | Netflix, YouTube, Prime Video, TV-Guide, TV, Apps (Home-row), Settings, RCU-pair, Reset | keycode → broadcast `android.intent.action.GLOBAL_BUTTON` → 4 receivers (`sdt.globalkey`, `tv.settings`, `droidlogic`, `sdt.vendor`) | `com.sdt.globalkey.GlobalKeyReceiver` has a **hardcoded** keyCode→app table | ⚠️ key not catchable, but the **launch is hijackable** via window-state change – see §5a (working, verified) |
 | **B – "Color buttons"** | **Red, Green, Yellow, Blue** | standard Android input event, **not** intercepted by any receiver | delivered to the **foreground app** | ✅ **yes** – any app / accessibility service can catch them |
 
 **Why B is the remap target:** the color keys emit plain
@@ -257,13 +257,78 @@ The interception is fully system-level, proven three ways:
    re-emitted as the permission-filtered broadcast. No user-space
    layer sees it.
 
-**Conclusion:** changing a Netflix/YouTube/Prime/TV-Guide target
-requires writing to `/system` → **root or a new operator firmware**.
-A ready-made remap app skeleton (broadcast receiver + accessibility
-service) is in `tools/keyremap/` in this repo – it is the
-implementation to use if a rooted path ever materializes (see
-[rooting.md](rooting.md)); on the current box it is a no-op for
-category A.
+**Conclusion:** the *key event itself* cannot be intercepted by any
+user app, **but the launch can be hijacked afterwards – and this
+works without root** (see below).
+
+### 5a. Working solution: "window hijack" *(verified 2026-11-13, on the live unit)*
+
+The system *does* do something observable: `com.sdt.globalkey` starts
+the target app (Netflix/YouTube/Prime). The resulting **window
+state change** is visible to any enabled accessibility service –
+unlike the key event and the broadcast.
+
+**How it works (app `de.pi.p610.keyremap`, source in
+[../tools/keyremap/](../tools/keyremap/)):**
+
+1. A user-installed accessibility service
+   (`KeyRemapAccessibilityService`, events = `typeWindowStateChanged`)
+   is enabled via `settings secure`.
+2. Pressing the Netflix button: `sdt.globalkey` starts
+   `com.netflix.ninja` → its window appears → the service detects
+   `window: com.netflix.ninja` → immediately
+   `startActivity(launch intent of org.jellyfin.androidtv)`.
+3. Result: **Netflix flashes for at most one frame, Jellyfin opens.**
+   Verified live: cold start (1 press), and the toggle case
+   (2nd press while inside Jellyfin → Home).
+
+**Behaviour:**
+
+- 1st press anywhere → target app opens (Jellyfin for Netflix).
+- 2nd press while inside the target → Home (toggle; decision based on
+  the actually observed previous window, not internal state).
+- A delayed self-check (2.5 s) relaunches the target if the first
+  `startActivity` was swallowed on cold start – without this, the
+  first press on a cold process silently failed and the user had to
+  press twice *(observed & fixed)*.
+- `sdt.globalkey`, the operator backbone, and all other buttons are
+  untouched.
+
+**Requirements & gotchas (all verified while building this):**
+
+- The target app must be *launchable* – for Netflix this means
+  `com.netflix.ninja` must be **enabled** (it had been per-user
+  disabled). The system launches it, our app only redirects.
+- The manifest needs `<queries>` for the trigger/target packages
+  (Android 11+ package visibility) – without it
+  `getLaunchIntentForPackage()` returns null.
+- The service needs `canRetrieveWindowContent="true"`
+  (for the foreground-window check).
+- Netflix-specific: the `/data` update of `com.netflix.ninja`
+  (13.2.2, `platformBuildVersionCode=36` = built for Android 16) was
+  **incompatible with this Android 14 box** – launches failed with
+  `CLASS_NOT_FOUND` (result -92) even though the app was enabled.
+  Fix: `pm uninstall com.netflix.ninja` (removes only the `/data`
+  update, reverts to the working `/product` 11.0.12). *If a future
+  OTA re-breaks the Netflix launch, this is the first thing to check.*
+
+**Undo (full revert, no root):**
+
+```sh
+adb shell settings put secure enabled_accessibility_services ''
+adb shell settings put secure accessibility_enabled 0
+adb uninstall de.pi.p610.keyremap
+# optional: restore Netflix as the button's effective target by
+# simply not having the service run (no other changes were needed)
+```
+
+**Status on this box (2026-11-13):** installed and enabled –
+**Netflix button → Jellyfin, verified with 1 press from cold start.**
+
+**Remaining limitation:** while the service runs, the *real*
+Netflix window is never left alone for more than one frame, so
+Netflix itself is effectively unreachable via its button (the app can
+still be opened from the app grid). This is the intended effect.
 
 **Category B (color buttons) – remappable without root:**
 the four color keys are plain input events (see §3a) with no system
@@ -312,11 +377,14 @@ All steps were read-only ADB; nothing on the device was modified.
 - *Is the mapping configurable via `settings`/UI?* No – no
   configuration surface exists (see §5).
 - *Can the Netflix/YouTube/… buttons be remapped to other apps
-  (e.g. Jellyfin) without root?* **No** – proven by experiment
-  (custom broadcast receiver + accessibility service both blocked,
-  Button Mapper from Play Store does not see the keys). Requires
-  root/OTA. See §5 and [../tools/keyremap/](../tools/keyremap/) for
-  the ready implementation to use once rooted.
+  (e.g. Jellyfin) without root?* **Yes – indirectly.** The key
+  event is not catchable (broadcast + accessibility key path both
+  blocked, proven by experiment), but the **system launch can be
+  hijacked**: an accessibility service watches the target app's
+  window appearing and immediately launches the desired app instead.
+  **Working on this box: Netflix button → Jellyfin, verified
+  (cold start, 1 press).** See §5a and
+  [../tools/keyremap/](../tools/keyremap/).
 
 **Still open:**
 - Does the Google Voice Control button do anything useful without a

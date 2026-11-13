@@ -142,10 +142,11 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 
 - [scripts/adb-info.sh](scripts/adb-info.sh) – a single, dependency-free script
   that collects the relevant technical information from a connected device.
-- [tools/keyremap/](tools/keyremap/) – minimal Android app to remap the
-  R601's global buttons (Netflix/YouTube/…) to other apps; tested on
-  the unrooted box (blocked – system-only broadcast), ready to use on
-  a rooted P610. See [docs/remote.md](docs/remote.md).
+- [tools/keyremap/](tools/keyremap/) – minimal Android app to remap
+  the R601's global buttons (Netflix/YouTube/…) to other apps via a
+  window-hijack accessibility service; **working on the unrooted box
+  (Netflix button → Jellyfin, verified)**. See
+  [docs/remote.md](docs/remote.md) §5a.
 
 ## Safety / constraints of this research
 
