@@ -132,6 +132,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/debranding.md](docs/debranding.md) | Launcher analysis, what's missing/extra vs. stock, reversible debranding plan, test plan |
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
+| [docs/steamlink-settings.md](docs/steamlink-settings.md) | **How-to:** Steam Link on the P610 – complete working settings (AV1, 50 Mbit cap, 1080p60, YUV 4:4:4) + measured failure modes |
 | [docs/bug-reports/](docs/bug-reports/) | BT gamepad GATT bug: root cause, verified workaround, vendor report, ready-to-send tickets; plus the keep-awake default improvement suggestion |
 | [docs/remote.md](docs/remote.md) | R601 remote: hardware, box-side software stack, observed behavior, GATT-bug context, button-remapping investigation (§5a: working solution) |
 | [docs/remote-button-remap-guide.md](docs/remote-button-remap-guide.md) | **How-to:** reproduce the special-button remap (Netflix → Jellyfin) on another box – build, install, enable, test, undo |

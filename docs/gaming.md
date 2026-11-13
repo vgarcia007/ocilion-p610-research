@@ -280,56 +280,23 @@ NVIDIA/Steam machine).
 
 ### Steam Link on the P610 – working configuration (GTA V, 2026-11-13)
 
-App settings files are **not readable** unrooted (package not debuggable, no
-`run-as`), so this is the *effective* configuration as applied in the app UI,
-verified against live codec metrics (`dumpsys media.metrics`).
+**Full settings table + measured failure modes: see
+[steamlink-settings.md](steamlink-settings.md).** Summary below.
 
-**Working setup – "runs really well" (user-verified, GTA V):**
-
-| Setting | Value |
-|---|---|
-| Codec | **AV1** (HW-decoded: `c2.amlogic.av1.decoder`, 1920x1080); HEVC off |
-| Frame rate cap | **60 FPS** |
-| Resolution cap | **Automatic (1920 × 1080)** |
-| Video quality | **Beautiful** („Schön") |
-| Color | **YUV 4:4:4** (full chroma – no edge/text blur) |
-| Hardware decode | **On** |
-| HDR | Automatic |
-| Display style | Thumbnail („Briefkasten") |
-| Network | **Bandwidth cap 50 Mbit/s** |
-| Low-latency network | **On** |
-| Direct connection | **Automatic (enabled)** |
-| Low-latency video | **On** |
-| Network path | Wi-Fi 5 GHz (5180 MHz, RSSI ~-41 dBm, 866 Mbps PHY) |
-
-4:4:4 costs ~50 % more bandwidth than the usual 4:2:0 – the reason this only
-works as AV1 + 50 Mbit cap: AV1's compression ratio is what keeps full-chroma
-1080p60 under the cap. (HEVC + 4:4:4 would have broken the box pipeline.)
-
-**What did NOT work (measured, same box/host, HEVC default):**
-
-- **HEVC (H.265) 1080p60, default bitrate:** decoder saturated –
-  `c2.amlogic.hevc.decoder` reported **24–36 % frame drops**, freeze rate
-  up to ~40 %; sustained load > 4 caused a **system-wide UI freeze**
-  (black screen, only ADB alive) requiring a full `adb reboot`.
-  1080p30 made it *worse* (still ~30 % drops) – the pipeline, not the fps
-  cap, was the bottleneck.
-- **AV1 1080p60 *uncapped* bitrate:** still 36–54 % drops, freeze rate
-  ~54–59 %. The 50 Mbit cap is what made the difference: AV1's compression
-  keeps the stream below the point where the S905X5M decode/composite
-  pipeline saturates.
-- Cross-check: a **Fire TV Stick on the same Wi-Fi** streamed the same
-  host fine at lower throughput – the link was never the bottleneck.
+**Working setup** (user-verified "runs really well", GTA V): **AV1 + 50 Mbit/s
+bandwidth cap + 1080p60 + YUV 4:4:4** – AV1's compression ratio keeps
+full-chroma 1080p60 under the cap, so the S905X5M decode/composite pipeline
+never saturates. Without the cap (AV1 or HEVC) the decoder dropped
+36–54 % of frames; the HEVC default even caused a full UI freeze
+requiring `adb reboot`. Wi-Fi was never the bottleneck (a Fire TV Stick
+streamed the same host fine on the same link).
 
 **Takeaway for this box:** cap the bitrate (~50 Mbit) and prefer AV1 –
-the S905X5M handles AV1 1080p60 at bounded bitrate well, but HEVC (and
-AV1 at unbounded game-bitrates) drops frames or freezes the UI.
+HEVC and unbounded game-bitrates drop frames or freeze the UI.
 
-In-game exit without ADB: **Xbox guide button** on the gamepad opens the
-**Steam overlay** (as on a PC – not an exit menu; note: the guide button
-*does* open the emulator pause/exit menu in Cannoli, but in Steam Link it
-opens the Steam overlay); Home key on the remote returns to the Android
-home screen.
+In-game: **Xbox guide button** opens the **Steam overlay** (as on a PC; in
+Cannoli the same button opens the emulator pause/exit menu). Home key on
+the remote returns to the Android home screen.
 
 ## Native Steam / Windows-on-ARM (compatibility layers)
 
