@@ -65,6 +65,28 @@ harder case than consumer Amlogic boxes.
    The property hints that Skyworth's U-Boot *has* an unlock routine,
    but it requires the OEM key handshake and a fastboot surface that
    this build does not expose. Not user-reachable.
+
+   **Follow-up (2026-11-13):** the user found an
+   **"OEM-Entsperrung / Bootloader-Entsperrung zulassen"** toggle in
+   the box's developer settings. Read-only analysis:
+   - `sys.oem_unlock_allowed=1` is **already set** – the toggle just
+     mirrors this property; flipping it cannot change a state that is
+     already "allowed".
+   - The other "OEM lock" surface on the box (`oem_lock` /
+     `android.hardware.oemlock.IOemLock` service) is Android's
+     **hardware oemlock** (carrier feature locks, e.g. USIM
+     restrictions) – **unrelated to the bootloader**.
+   - Actual lock state unchanged: `ro.boot.flash.locked=1`,
+     `ro.boot.vbmeta.device_state=locked`,
+     `verifiedbootstate=green` (user build, release-keys).
+   - No fastboot/fastbootd binary on the box, so there is no bootable
+     surface the toggle could act on anyway.
+   - **Assessment:** the toggle is almost certainly a no-op (or only
+     sets the already-set property) – the eFuse-level flash lock would
+     still require the OEM key. *Untested on purpose* (write action
+     unknown). If it is ever toggled, re-check `getprop` for
+     `ro.boot.flash.locked` / `ro.boot.vbmeta.device_state` after
+     reboot and note the result here.
 5. **Wait for the generation to mature.**
    The P610 launched mid-2025; S905X4/X3 boxes took 1–2 years before
    stable root/Custom firmware arrived. Given the `ross` shared base,
