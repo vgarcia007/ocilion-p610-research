@@ -133,6 +133,7 @@ This is a deliberate choice by the OEM/operator firmware, not a hardware limit.
 | [docs/linux.md](docs/linux.md) | CoreELEC / Debian / Armbian / Termux feasibility, boot methods, open risks |
 | [docs/gaming.md](docs/gaming.md) | Retro emulation, gamepads, game streaming, ARM64 layers |
 | [docs/bug-reports/](docs/bug-reports/) | BT gamepad GATT bug: root cause, verified workaround, vendor report, ready-to-send tickets; plus the keep-awake default improvement suggestion |
+| [docs/remote.md](docs/remote.md) | R601 remote: hardware, box-side software stack, observed behavior, GATT-bug context, button-remapping investigation plan |
 | [docs/operators.md](docs/operators.md) | Known operators/providers deploying the P610 (evidence-graded) |
 | [docs/rooting.md](docs/rooting.md) | Rooting: current state, realistic paths, watch list |
 | [docs/links.md](docs/links.md) | Official sources, datasheets, and related projects |
