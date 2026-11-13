@@ -288,12 +288,17 @@ verified against live codec metrics (`dumpsys media.metrics`).
 
 | Setting | Value |
 |---|---|
-| Codec | **AV1** (HW-decoded: `c2.amlogic.av1.decoder`, 1920x1080) |
+| Codec | **AV1** (HW-decoded: `c2.amlogic.av1.decoder`, 1920x1080); HEVC off |
 | Frame rate | **60 fps** |
 | Video quality | **Max** |
+| Color | **YUV 4:4:4** (full chroma – no edge/text blur) |
 | Network | **capped at 50 Mbit** |
 | Minimum latency | **On** |
 | Network path | Wi-Fi 5 GHz (5180 MHz, RSSI ~-41 dBm, 866 Mbps PHY) |
+
+4:4:4 costs ~50 % more bandwidth than the usual 4:2:0 – the reason this only
+works as AV1 + 50 Mbit cap: AV1's compression ratio is what keeps full-chroma
+1080p60 under the cap. (HEVC + 4:4:4 would have broken the box pipeline.)
 
 **What did NOT work (measured, same box/host, HEVC default):**
 
@@ -315,8 +320,10 @@ the S905X5M handles AV1 1080p60 at bounded bitrate well, but HEVC (and
 AV1 at unbounded game-bitrates) drops frames or freezes the UI.
 
 In-game exit without ADB: **Xbox guide button** on the gamepad opens the
-stream pause menu → back to the app; Home key on the remote returns to
-the Android home screen.
+**Steam overlay** (as on a PC – not an exit menu; note: the guide button
+*does* open the emulator pause/exit menu in Cannoli, but in Steam Link it
+opens the Steam overlay); Home key on the remote returns to the Android
+home screen.
 
 ## Native Steam / Windows-on-ARM (compatibility layers)
 
