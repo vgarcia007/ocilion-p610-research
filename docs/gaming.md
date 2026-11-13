@@ -289,11 +289,17 @@ verified against live codec metrics (`dumpsys media.metrics`).
 | Setting | Value |
 |---|---|
 | Codec | **AV1** (HW-decoded: `c2.amlogic.av1.decoder`, 1920x1080); HEVC off |
-| Frame rate | **60 fps** |
-| Video quality | **Max** |
+| Frame rate cap | **60 FPS** |
+| Resolution cap | **Automatic (1920 × 1080)** |
+| Video quality | **Beautiful** („Schön") |
 | Color | **YUV 4:4:4** (full chroma – no edge/text blur) |
-| Network | **capped at 50 Mbit** |
-| Minimum latency | **On** |
+| Hardware decode | **On** |
+| HDR | Automatic |
+| Display style | Thumbnail („Briefkasten") |
+| Network | **Bandwidth cap 50 Mbit/s** |
+| Low-latency network | **On** |
+| Direct connection | **Automatic (enabled)** |
+| Low-latency video | **On** |
 | Network path | Wi-Fi 5 GHz (5180 MHz, RSSI ~-41 dBm, 866 Mbps PHY) |
 
 4:4:4 costs ~50 % more bandwidth than the usual 4:2:0 – the reason this only
